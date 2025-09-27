@@ -1,0 +1,40 @@
+# .github/workflows/build.yml
+
+name: Build Electron App
+
+on:
+  push:
+    branches:
+      - main # This runs the build whenever you push to your main branch
+
+jobs:
+  build:
+    # This creates a "matrix" to run the same job on different operating systems
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    # Use the virtual machine specified in the matrix
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: 1. Check out git repository
+        uses: actions/checkout@v3
+
+      - name: 2. Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18' # Use a version compatible with your Electron version
+          cache: 'npm'
+
+      - name: 3. Install dependencies
+        run: npm install
+
+      - name: 4. Build/make application
+        run: npm run make
+
+      - name: 5. Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: studystack-${{ matrix.os }}
+          path: out/make # This is where Forge puts the installers
