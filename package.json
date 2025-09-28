@@ -1,14 +1,25 @@
 {
   "name": "studystack-revise",
-  "productName": "StudyStack Revise",
   "version": "1.0.0",
-  "description": "Flashcard application with offline functionality including Learn mode, Spaced Learning and practice tests.",
-  "main": "main.js",
+  "description": "StudyStack Revise - offline flashcard app",
+  "main": "src/index.js",
+  "author": "Tom",   // 👈 add this
+  "license": "MIT",
   "scripts": {
-    "start": "electron-forge start",
-    "package": "electron-forge package",
+    "start": "electron .",
     "make": "electron-forge make"
   },
+makers: [
+  {
+    name: '@electron-forge/maker-squirrel',
+    config: {},
+  },
+  {
+    name: '@electron-forge/maker-zip',
+    platforms: ['win32'],
+  },
+],
+
   "keywords": [],
   "author": "",
   "license": "ISC",
