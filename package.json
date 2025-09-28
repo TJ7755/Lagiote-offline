@@ -2,7 +2,7 @@
   "name": "studystack-revise",
   "version": "1.0.0",
   "description": "StudyStack Revise - offline flashcard app",
-  "main": "src/index.js",
+  "main": "index.js",
   "author": "Tom",
   "license": "MIT",
   "scripts": {
