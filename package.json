@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "StudyStack Revise - offline flashcard app",
   "main": "src/index.js",
-  "author": "Tom",   // 👈 add this
+  "author": "Tom",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
