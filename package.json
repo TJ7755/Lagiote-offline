@@ -9,29 +9,25 @@
     "start": "electron .",
     "make": "electron-forge make"
   },
-makers: [
-  {
-    name: '@electron-forge/maker-squirrel',
-    config: {},
+  "config": {
+    "forge": {
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": ["win32"]
+        }
+      ]
+    }
   },
-  {
-    name: '@electron-forge/maker-zip',
-    platforms: ['win32'],
-  },
-],
-
   "keywords": [],
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
     "@electron-forge/cli": "^7.9.0",
-    "@electron-forge/maker-deb": "^7.9.0",
-    "@electron-forge/maker-rpm": "^7.9.0",
     "@electron-forge/maker-squirrel": "^7.9.0",
     "@electron-forge/maker-zip": "^7.9.0",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.9.0",
-    "@electron-forge/plugin-fuses": "^7.9.0",
-    "@electron/fuses": "^1.8.0",
     "electron": "^38.1.2"
   },
   "dependencies": {
