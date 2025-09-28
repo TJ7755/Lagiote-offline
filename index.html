@@ -2445,6 +2445,9 @@
         }
 
         async function startLearnMode(deckId) {
+            document.getElementById('progressView').classList.add('hidden');
+            document.getElementById('cardView').classList.add('hidden');
+            document.getElementById('completeView').classList.add('hidden');
             currentMode = 'learn';
             currentDeckId = deckId;
             const deck = decks[deckId];
@@ -2469,6 +2472,9 @@
         }
 
         async function startSpacedLearning(deckId) {
+            document.getElementById('progressView').classList.add('hidden');
+            document.getElementById('cardView').classList.add('hidden');
+            document.getElementById('completeView').classList.add('hidden');
             currentMode = 'spaced';
             currentDeckId = deckId;
             const deck = decks[deckId];
@@ -2505,6 +2511,9 @@
         }
 
         async function startReviewMode(deckId) {
+            document.getElementById('progressView').classList.add('hidden');
+            document.getElementById('cardView').classList.add('hidden');
+            document.getElementById('completeView').classList.add('hidden');
             currentMode = 'review';
             currentDeckId = deckId;
             const deck = decks[deckId];
