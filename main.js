@@ -7,8 +7,10 @@ const path = require('path');
 function createWindow () {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1200, // You can adjust the starting size
+    width: 1200,
     height: 800,
+    show: false, // <-- 1. Keep the window hidden on startup
+    backgroundColor: '#f7fafc', // <-- 2. Set a background color that matches your app's light theme
     webPreferences: {
       // The preload script is a secure bridge between Electron's Node.js environment
       // and your web page (the "renderer" process).
@@ -22,6 +24,11 @@ function createWindow () {
 
   // and load the index.html of the app.
   mainWindow.loadFile('index.html');
+
+  // 3. Use the 'ready-to-show' event to show the window only when the page is fully rendered.
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
 
   // Optional: Open the DevTools.
   // mainWindow.webContents.openDevTools();
