@@ -1731,13 +1731,7 @@
         
         const savedDecks = await getAllDataFromDB('decks');
         decks = {};
-        const sm2 = new SM2Algorithm();
         savedDecks.forEach(deck => {
-            deck.cards.forEach(card => {
-                if (!card.sm2Data) {
-                    card.sm2Data = sm2.calculateNextReview(card)(3); 
-                }
-            });
             decks[deck.id] = deck;
         });
         
@@ -2015,28 +2009,23 @@
     }
     
     async function createNewDeck(name, category, cards, notes = '') {
-        const deckId = Date.now().toString();
-        const settings = { ...DEFAULT_DECK_SETTINGS };
-        const sm2 = new SM2Algorithm();
-        const processedCards = cards.map(c => ({
-            ...c,
-            sm2Data: sm2.calculateNextReview(c)(3)
-        }));
+    const deckId = Date.now().toString();
+    const settings = { ...DEFAULT_DECK_SETTINGS };
 
-        const newDeck = {
-            id: deckId, name, category, cards: processedCards, notes,
-            created: new Date().toISOString(),
-            settings: settings,
-            learnState: {
-                buckets: [[...processedCards], ...Array.from({length: settings.maxBuckets - 1}, () => [])],
-                currentRound: 1, maxBuckets: settings.maxBuckets
-            },
-            reviewState: { stillLearning: [...processedCards], correct: [], currentRound: 1, lastRoundIncorrect: [] }
-        };
-        decks[deckId] = newDeck;
-        await saveDataToDB('decks', newDeck);
-        return deckId;
-    }
+    const newDeck = {
+        id: deckId, name, category, cards: cards, notes,
+        created: new Date().toISOString(),
+        settings: settings,
+        learnState: {
+            buckets: [[...cards], ...Array.from({length: settings.maxBuckets - 1}, () => [])], 
+            currentRound: 1, maxBuckets: settings.maxBuckets
+        },
+        reviewState: { stillLearning: [...cards], correct: [], currentRound: 1, lastRoundIncorrect: [] } 
+    };
+    decks[deckId] = newDeck;
+    await saveDataToDB('decks', newDeck);
+    return deckId;
+}
 
     function editDeck(deckId) {
         const deck = decks[deckId];
@@ -2525,17 +2514,7 @@
                 const cardsPerRound = studyState.settings.cardsPerRound === 'all' ? 999 : parseInt(studyState.settings.cardsPerRound);
                 const availableCards = studyState.buckets.slice(0, -1).flat();
                 
-                const newCards = availableCards.filter(c => c.sm2Data.repetition === 0);
-                const reviewCards = availableCards.filter(c => c.sm2Data.repetition > 0)
-                                                 .sort((a, b) => new Date(a.sm2Data.dueDate) - new Date(b.sm2Data.dueDate));
-                
-                const newCardsCount = Math.min(newCards.length, Math.floor(cardsPerRound / 2));
-                const reviewCardsCount = cardsPerRound - newCardsCount;
-
-                const roundNewCards = shuffleArray(newCards).slice(0, newCardsCount);
-                const roundReviewCards = reviewCards.slice(0, reviewCardsCount);
-                
-                studyState.roundCards = shuffleArray([...roundNewCards, ...roundReviewCards]);
+                studyState.roundCards = shuffleArray(availableCards).slice(0, cardsPerRound);
 
             } else if (currentMode === 'review') {
                 let prioritized = [];
@@ -2774,10 +2753,6 @@
         async function moveCard(card, correct) {
             const cardInDeck = decks[currentDeckId].cards.find(c => c.id === card.id);
             if(cardInDeck) cardInDeck.isNew = false;
-            
-            const sm2 = new SM2Algorithm();
-            const quality = correct ? 4 : 1; 
-            cardInDeck.sm2Data = sm2.calculateNextReview(cardInDeck)(quality);
 
             if (currentMode === 'learn') {
                 for (let i = 0; i < studyState.settings.maxBuckets; i++) {
@@ -2823,11 +2798,7 @@
             btn.classList.add('feedback-correct');
             setTimeout(() => {
                 btn.classList.remove('feedback-correct');
-                if (currentMode === 'spaced') {
-                    markSpaced(4);
-                } else {
-                    moveCard(studyState.roundCards[studyState.currentCardIndex], true);
-                }
+                moveCard(studyState.roundCards[studyState.currentCardIndex], true);
             }, 200);
         }
         function markIncorrect(isAutomated = false) {
@@ -2852,11 +2823,7 @@
             btn.classList.add('feedback-incorrect');
             setTimeout(() => {
                 btn.classList.remove('feedback-incorrect');
-                if (currentMode === 'spaced') {
-                    markSpaced(1);
-                } else {
-                    moveCard(studyState.roundCards[studyState.currentCardIndex], false);
-                }
+                moveCard(studyState.roundCards[studyState.currentCardIndex], false);
             }, 200);
         }
         
@@ -2953,14 +2920,8 @@
             } else if (currentMode === 'review') {
                 deck.reviewState = { stillLearning: [...deck.cards], correct: [], currentRound: 1, lastRoundIncorrect: [] };
                 await saveDataToDB('decks', deck);
-                startReviewMode(currentDeckId);
-            } else if (currentMode === 'spaced') {
-                const sm2 = new SM2Algorithm();
-                deck.cards.forEach(card => card.sm2Data = sm2.calculateNextReview({})(3));
-                await saveDataToDB('decks', deck);
-                configureStudy('spaced', currentDeckId);
-            }
-        }
+                startReviewMode(currentDeckId);  
+        }}
         
         function isActionAllowed() {
             if (activeView !== 'studyMode' || document.getElementById('cardView').classList.contains('hidden')) {
@@ -3141,10 +3102,11 @@
                             decks[deckId] = newDeck;
                             await saveDataToDB('decks', newDeck);
                             showToast(`Deck "${name}" imported successfully with ${newDeck.cards.length} cards!`);
+
                         } else if (file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
                             const cards = parseTextData(e.target.result, file.name.endsWith('.csv') ? ',' : '\t');
                              if (cards.length > 0) {
-                                await createNewDeck(name, importedDeck.category || 'Other', cards);
+                                await createNewDeck(name, 'Other', cards);
                                 showToast(`Deck "${name}" imported successfully with ${cards.length} cards!`);
                             } else { throw new Error('No valid cards found in file.'); }
                         }
