@@ -4,8 +4,6 @@
 const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
 
-require('update-electron-app')();
-
 if (require('electron-squirrel-startup')) {
   app.quit();
 }
