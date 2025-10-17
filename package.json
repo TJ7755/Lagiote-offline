@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Lagiote Revise - offline flashcard app",
   "main": "main.js",
+  "repository": "github:YOUR_USERNAME/YOUR_REPO_NAME",
   "author": "Tom",
   "license": "MIT",
   "scripts": {
@@ -21,7 +22,9 @@
         },
         {
           "name": "@electron-forge/maker-zip",
-          "platforms": ["darwin"]
+          "platforms": [
+            "darwin"
+          ]
         },
         {
           "name": "@electron-forge/maker-dmg",
@@ -41,15 +44,18 @@
       ]
     }
   },
-
   "keywords": [],
   "devDependencies": {
     "@electron-forge/cli": "^7.9.0",
+    "@electron-forge/maker-deb": "^7.9.0",
+    "@electron-forge/maker-dmg": "^7.9.0",
+    "@electron-forge/maker-rpm": "^7.9.0",
     "@electron-forge/maker-squirrel": "^7.9.0",
     "@electron-forge/maker-zip": "^7.9.0",
     "electron": "^38.1.2"
   },
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.1"
+    "electron-squirrel-startup": "^1.0.1",
+    "update-electron-app": "^3.0.0"
   }
 }
