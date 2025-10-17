@@ -1,7 +1,7 @@
 {
-  "name": "studystack-revise",
+  "name": "Lagiote-revise",
   "version": "1.0.0",
-  "description": "StudyStack Revise - offline flashcard app",
+  "description": "Lagiote Revise - offline flashcard app",
   "main": "main.js",
   "author": "Tom",
   "license": "MIT",
@@ -14,15 +14,34 @@
       "makers": [
         {
           "name": "@electron-forge/maker-squirrel",
-          "config": {}
+          "config": {
+            "name": "LagioteRevise",
+            "setupExe": "LagioteRevise-Setup.exe"
+          }
         },
         {
           "name": "@electron-forge/maker-zip",
-          "platforms": ["win32"]
+          "platforms": ["darwin"]
+        },
+        {
+          "name": "@electron-forge/maker-dmg",
+          "config": {
+            "background": "./assets/dmg-background.png",
+            "format": "ULFO"
+          }
+        },
+        {
+          "name": "@electron-forge/maker-deb",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-rpm",
+          "config": {}
         }
       ]
     }
   },
+
   "keywords": [],
   "devDependencies": {
     "@electron-forge/cli": "^7.9.0",

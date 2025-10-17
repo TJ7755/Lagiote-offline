@@ -1,15 +1,42 @@
+<!--
+
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudyStack Revise</title>
+    <title>Lagiote Revise</title>
     <script src="./assets/js/pdf.min.js"></script>
     <script src="./assets/js/mammoth.browser.min.js"></script>
     <script src="./assets/js/chart.js"></script>
     <link href="./assets/css/style.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="https://i.ibb.co/1fyDzymL/Study-Stack-Pro-Photoroom.png">
     <style>
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .stats-table th, .stats-table td {
+            text-align: left;
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .stats-table th {
+            font-weight: 600;
+            color: var(--secondary-text);
+        }
+        .stats-table tbody tr:hover {
+            background-color: var(--input-bg);
+        }
+        .stats-table td:first-child {
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         :root {
             --bg-color: #f7fafc; --text-color: #333; --header-bg: white; --card-bg: white; --border-color: #e2e8f0; --border-dashed: #e2e8f0; --primary-color: #667eea; --primary-hover: #5a67d8; --secondary-text: #718096; --shadow-color: rgba(0,0,0,0.05); --input-bg: #f7fafc; --input-focus-bg: white; --button-secondary-bg: #e2e8f0; --button-secondary-text: #4a5568; --button-secondary-hover: #cbd5e0; --success-color: #38a169; --danger-color: #e53e3e;
         }
@@ -456,7 +483,7 @@
             </div>
             <div class="welcome-text">
                 <h1 id="welcomeMessage">Lagiote Revise</h1>
-                <span style="font-size: 0.8rem; color: var(--secondary-text); align-self: flex-end; padding-bottom: 5px;">v2.37</span>
+                <span style="font-size: 0.8rem; color: var(--secondary-text); align-self: flex-end; padding-bottom: 5px;">v1.06</span>
             </div>
         </div>
         <div class="header-actions">
@@ -520,6 +547,23 @@
 <div id="internalAnalyticsView" class="container view-container">
 <div class="section-title" style="padding-top: 20px;">Internal Analytics Dashboard</div>
 <div class="settings-container">
+     <div class="settings-section">
+        <h2>Common Error Analysis</h2>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="errorDeckSelect">Select Deck</label>
+                <select id="errorDeckSelect"></select>
+            </div>
+            <div class="form-group">
+                <label for="errorCardSelect">Select Card</label>
+                <select id="errorCardSelect"></select>
+            </div>
+        </div>
+        <div id="errorAnalysisResult" style="margin-top: 20px;">
+            <p>Please select a card to see a breakdown of common incorrect answers.</p>
+        </div>
+    </div>
+
 
     <div class="settings-section">
         <h2>Interaction Metrics Distributions</h2>
@@ -537,36 +581,22 @@
                 <canvas id="correctionsHistogram"></canvas>
             </div>
         </div>
+        <div class="settings-section">
+            <h2>Deck Flashcard Statistics</h2>
+            <div id="deckStatisticsResult" style="margin-top: 20px; max-height: 500px; overflow-y: auto;">
+            <p>Please select a deck to see a breakdown of its flashcard statistics.</p>
+        </div>
+    </div>
     </div>
 
-    <!-- Section for Scatter Plot -->
     <div class="settings-section">
         <h2>Latency vs. Correctness</h2>
         <canvas id="latencyScatterPlot" style="max-height: 400px;"></canvas>
     </div>
 
-    <!-- Section for Time-Series -->
     <div class="settings-section">
         <h2>Interactions Per Day</h2>
         <canvas id="interactionsTimeSeries" style="max-height: 400px;"></canvas>
-    </div>
-
-    <!-- Section for Error Analysis -->
-    <div class="settings-section">
-        <h2>Common Error Analysis</h2>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="errorDeckSelect">Select Deck</label>
-                <select id="errorDeckSelect"></select>
-            </div>
-            <div class="form-group">
-                <label for="errorCardSelect">Select Card</label>
-                <select id="errorCardSelect"></select>
-            </div>
-        </div>
-        <div id="errorAnalysisResult" style="margin-top: 20px;">
-            <p>Please select a card to see a breakdown of common incorrect answers.</p>
-        </div>
     </div>
 
 </div>
@@ -753,7 +783,11 @@
         <div class="study-header">
             <div class="study-header-content">
                 <div class="study-title" id="studyTitle">Learning Mode</div>
-                <div class="study-subtitle" id="studySubtitle">Deck Name</div>
+                <div class="study-subtitle" id="studySubtitle">Deck Name</div><br>
+                <div id="focusMeter" style="display: inline-block; margin-left: 15px; vertical-align: middle;">
+                    <span style="font-size: 0.9rem; color: var(--secondary-text); margin-right: 5px;">Focus:</span>
+                    <div id="focusDot" style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: #38a169; transition: background-color 0.3s;"></div>
+                </div>
             </div>
             <div class="study-header-actions">
                  <button id="accentToggleBtn" class="header-btn hidden" title="Toggle Accents">
@@ -778,11 +812,36 @@
             <div class="progress-dashboard">
                 <div id="deckNotesDisplay" class="hidden"></div>
                 <div class="progress-title" id="progressTitle">Learning Progress</div>
-                <div class="round-info" id="roundInfo">Round 1 - 0 of 0 cards</div>
-                <div class="buckets-grid" id="bucketsContainer"></div>
-                <div class="progress-bar-container"><div class="progress-fill" id="progressBarFill" style="width: 0%"></div></div>
-                <div class="stats" id="statsContainer"></div>
-                <div style="text-align: center; margin-top: 25px;">
+                
+                <div style="margin-bottom: 25px;">
+                    <div class="deck-progress-label" style="margin-bottom: 10px;">
+                        <span>Deck Mastery</span>
+                        <span id="deckMasteryValue">0%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-fill" id="deckMasteryProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="stats" id="statsContainer">
+                    <div class="stat">
+                        <div class="stat-value" id="masteredCardCount">0</div>
+                        <div class="stat-label">Cards Mastered</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="learningCardCount">0</div>
+                        <div class="stat-label">Cards Learning</div>
+                    </div>
+                </div>
+
+                <div id="activeLearningPoolDisplay" style="margin-top: 30px;">
+                    <h4 style="font-weight: 600; color: var(--text-color); margin-bottom: 15px; text-align: center;">This Round's Focus</h4>
+                    <div id="activePoolList" class="deck-cards-list" style="max-height: 150px; padding: 10px 20px; border-style: dashed;">
+                        <p style="text-align: center; color: var(--secondary-text);">Preparing your next round...</p>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
                     <button class="btn" id="continueBtn">Continue Round</button>
                     <button class="btn btn-secondary" onclick="endSession()" style="margin-left: 10px;">End Session</button>
                     <button class="btn btn-danger" id="resetBtn" onclick="resetProgress()" style="margin-left: 10px;">Reset Progress</button>
@@ -810,11 +869,13 @@
                 <textarea id="writeAnswerInput" class="form-group textarea hidden" placeholder="Type your answer here..."></textarea>
                 <div id="accentButtonsContainer" class="accent-buttons hidden"></div>
                 <div id="userAnswerDisplay" class="answer hidden" style="border: 2px solid var(--border-color); margin-bottom: 10px;"></div>
+                <div id="feedbackMessage" style="text-align: center; margin-top: 10px; font-weight: 500; min-height: 20px;"></div>
             </div>
             <div class="answer-buttons" id="simpleAnswerButtons">
                 <button class="btn btn-show" id="showAnswerBtn" onclick="showAnswer()">Show Answer</button>
                 <button class="btn btn-secondary hidden" id="showQuestionBtn" onclick="showQuestion()">Show Question</button>
                 <button class="btn btn-show hidden" id="checkAnswerBtn" onclick="autoCheckAnswer()">Check Answer</button>
+                <button class="btn btn-secondary hidden" id="dontKnowBtn" onclick="dontKnowAnswer()">Don't Know</button>
                 <button class="btn btn-incorrect hidden" id="incorrectBtn" onclick="markIncorrect()">Incorrect</button>
                 <button class="btn btn-correct hidden" id="correctBtn" onclick="markCorrect()">Correct</button>
             </div>
@@ -1026,6 +1087,18 @@
     </div>
 </div>
 
+<div id="takeABreakModal" class="modal">
+    <div class="modal-content text-center">
+         <span class="close" onclick="this.parentElement.parentElement.classList.remove('show')">&times;</span>
+         <h2>Focus is Waning</h2>
+         <p>Taking breaks is great for improving learning. Take a moment to recharge your batteries!</p>
+         <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="document.getElementById('takeABreakModal').classList.remove('show')">Keep Going</button>
+            <button class="btn btn-success" onclick="endSession()">End Session</button>
+         </div>
+    </div>
+</div>
+
 <div id="nameModal" class="modal">
     <div class="modal-content">
         <span class="close" onclick="closeNameModal()">&times;</span>
@@ -1171,22 +1244,7 @@
          </p>
     </div>
 </div>
-<div id="downloadsModal" class="modal">
-    <div class="modal-content">
-         <span class="close" onclick="this.parentElement.parentElement.classList.remove('show')">&times;</span>
-         <h2>Download the Desktop App</h2>
-         <p style="text-align: left;">
-            Get the full Lagiote Revise experience on your Windows or Mac computer for offline access when you can't access the internet.<br><br>
-            There may be a warning when you first run the app - this is normal for apps outside the official app stores. Please click, 'Show More' and then 'Run Anyway' if prompted by your OS security settings.
-         </p>
-         <div id="download-buttons-container" style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px; min-height: 50px;">
-            <!-- Download buttons will be injected here by JavaScript -->
-         </div>
-         <p style="color: var(--secondary-text); font-size: 0.9rem; margin-top: 20px;">
-            <em>Note: The desktop app is currently in beta and may have some bugs. Please report any issues you encounter.</em>
-         </p>
-    </div>
-</div>
+
 <div id="analyticsModal" class="modal">
     <div class="modal-content" style="max-width: 700px;">
         <span class="close" onclick="this.parentElement.classList.remove('show')">&times;</span>
@@ -1222,6 +1280,9 @@
         sessions: []
     };
 
+    let lastKnownFocusScore = 1.0;
+    let focusLossStartTime = null;
+    let accumulatedAwayDuration = 0; 
     let currentDeckId = null;
     let currentMode = null;
     let confirmCallback = null;
@@ -1230,14 +1291,15 @@
     let studyState = {
         buckets: [],
         currentRound: 1,
-        currentCardIndex: 0, // This will now be an index for the ALP
-        roundCards: [], // We will deprecate this for learn mode but keep for others
+        currentCardIndex: 0, 
+        roundCards: [], 
         settings: {},
         lastRoundIncorrect: [],
         isRetypingIncorrect: false,
         startTime: null,
         activeLearningPool: [],
-        knowledgeStates: new Map()
+        knowledgeStates: new Map(),
+        incorrectInThisRound: [],
     };
     const DEFAULT_DECK_SETTINGS = { learnMode: 'flashcard', reviewOrder: 'random', cardsPerRound: 10, maxBuckets: 4, caseSensitive: false, punctuation: false, retypeIncorrect: true, feedbackStyle: 'simple', forgivingAutomarking: false };
     let editorCardCounter = 0;
@@ -1316,7 +1378,8 @@
     
     function initDB() {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open('LagioteDB', 4); 
+            // Version number is increased from 4 to 5 to trigger the upgrade
+            const request = indexedDB.open('LagioteDB', 5); 
 
             request.onerror = event => reject("Error opening DB: " + event.target.errorCode);
             
@@ -1325,23 +1388,22 @@
                 resolve();
             };
 
+            // This is where the magic happens
             request.onupgradeneeded = event => {
                 db = event.target.result;
                 const transaction = event.target.transaction;
 
-                if (!db.objectStoreNames.contains('decks')) {
-                    db.createObjectStore('decks', { keyPath: 'id' });
-                }
-                if (!db.objectStoreNames.contains('appData')) {
-                    db.createObjectStore('appData', { keyPath: 'key' });
-                }
+                // Create 'concepts' store if it doesn't exist
                 if (!db.objectStoreNames.contains('concepts')) {
                     db.createObjectStore('concepts', { keyPath: 'conceptID' });
                 }
+                // Create 'userKnowledgeState' store if it doesn't exist
                 if (!db.objectStoreNames.contains('userKnowledgeState')) {
+                    // Using a composite key to ensure each user/card combo is unique
                     db.createObjectStore('userKnowledgeState', { keyPath: ['userID', 'cardID'] });
                 }
                 
+                // Create 'interactionLogs' store if it doesn't exist
                 if (!db.objectStoreNames.contains('interactionLogs')) {
                     const logStore = db.createObjectStore('interactionLogs', { keyPath: 'id', autoIncrement: true });
                     logStore.createIndex('by_cardID', 'cardID', { unique: false });
@@ -1349,33 +1411,38 @@
                     console.log("Created 'interactionLogs' object store.");
                 }
 
-                if (event.oldVersion < 3) {
-                    console.log("Starting database migration for Milestone 1.1...");
+                // --- DATA MIGRATION SCRIPT ---
+                // This runs only when the version number changes.
+                // It finds all your old cards and prepares them for the new system.
+                if (event.oldVersion < 5) {
+                    console.log("Starting database migration for cognitive engine...");
                     const deckStore = transaction.objectStore('decks');
-                    const conceptStore = transaction.objectStore('concepts');
                     const stateStore = transaction.objectStore('userKnowledgeState');
 
                     deckStore.getAll().onsuccess = (e) => {
                         const allDecks = e.target.result;
-                        if (!allDecks || allDecks.length === 0) return;
+                        if (!allDecks) return;
 
                         allDecks.forEach(deck => {
                             let deckNeedsUpdate = false;
                             deck.cards.forEach(card => {
-                                if (card.conceptID) return;
-                                deckNeedsUpdate = true;
-                                const newConceptID = `concept-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                                conceptStore.put({ conceptID: newConceptID, createdAt: new Date().toISOString() });
-                                card.conceptID = newConceptID;
-                                card.cardArchetype = 'Paired Association';
-                                stateStore.put({
-                                    userID: 'default_user', cardID: card.id, masteryScore: 0.5, stability: 1.0,
-                                    lastReviewed: card.sm2Data ? card.sm2Data.dueDate : new Date().toISOString(), recallHistory: []
-                                });
+                                if (typeof card.masteryScore === 'undefined') {
+                                    deckNeedsUpdate = true;
+                                    stateStore.put({
+                                        userID: 'default_user', 
+                                        cardID: card.id, 
+                                        masteryScore: 0.5, 
+                                        stability: 1.0, 
+                                        lastReviewed: new Date().toISOString(),
+                                        recallHistory: []
+                                    });
+                                }
                             });
-                            if (deckNeedsUpdate) deckStore.put(deck);
+                            if (deckNeedsUpdate) {
+                                deckStore.put(deck); // Save the changes to the deck
+                            }
                         });
-                        console.log("Migration for Milestone 1.1 complete.");
+                        console.log("Cognitive engine migration complete.");
                     };
                 }
             };
@@ -1384,10 +1451,7 @@
 
     let currentInteractionLog = {};
 
-    /**
-     * Resets the log object for a new card.
-     * @param {string} cardID The ID of the card being shown.
-     */
+
     function startInteractionLog(cardID) {
         currentInteractionLog = {
             cardID: cardID,
@@ -1395,21 +1459,19 @@
             firstKeyPressTime: null,
             backspaceCount: 0,
             deleteCount: 0,
-            attemptCount: (studyState.isRetypingIncorrect ? 2 : 1) // Starts at 1 or 2 if retyping
+            attemptCount: (studyState.isRetypingIncorrect ? 2 : 1),
+            awayDuration: accumulatedAwayDuration
         };
+        
+        accumulatedAwayDuration = 0;
     }
 
-    /**
-     * Handles keydown events in the "Type Mode" input to capture metrics.
-     * @param {KeyboardEvent} e The keyboard event.
-     */
+
     function handleInteractionLogging(e) {
-        // On First Keypress: Record a second timestamp.
         if (currentInteractionLog.firstKeyPressTime === null && e.key.length === 1) {
             currentInteractionLog.firstKeyPressTime = performance.now();
         }
 
-        // On Each Keypress: Increment counters for backspace/delete.
         if (e.key === 'Backspace') {
             currentInteractionLog.backspaceCount++;
         } else if (e.key === 'Delete') {
@@ -1498,28 +1560,108 @@
             showView('internalAnalyticsView');
             
             try {
-                const transaction = db.transaction(['interactionLogs'], 'readonly');
-                const store = transaction.objectStore('interactionLogs');
-                const allLogs = await new Promise((resolve, reject) => {
-                    const request = store.getAll();
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                });
+                const [allLogs, allKnowledgeStates] = await Promise.all([
+                    getAllDataFromDB('interactionLogs'),
+                    getAllDataFromDB('userKnowledgeState')
+                ]);
 
                 if (!allLogs || allLogs.length === 0) {
                     console.warn("No interaction logs found to generate analytics.");
-                    // You could show a message on the UI here
                     return;
                 }
-
+                
                 renderHistograms(allLogs);
                 renderLatencyScatterPlot(allLogs);
                 renderInteractionsTimeSeries(allLogs);
-                setupErrorAnalysis(allLogs);
+
+                setupErrorAnalysisAndDeckStats(allLogs, allKnowledgeStates);
 
             } catch (error) {
-                console.error("Failed to fetch interaction logs for analytics:", error);
+                console.error("Failed to fetch data for analytics:", error);
             }
+        }
+
+        function generateDeckStatistics(deckId, allLogs, allKnowledgeStates) {
+            const resultContainer = document.getElementById('deckStatisticsResult');
+            const selectedDeck = decks[deckId];
+
+            if (!selectedDeck) {
+                resultContainer.innerHTML = '<p>Please select a deck to see a breakdown of its flashcard statistics.</p>';
+                return;
+            }
+
+            const knowledgeMap = new Map(allKnowledgeStates.map(item => [item.cardID, item]));
+
+            const cardStats = selectedDeck.cards.map(card => {
+                const logsForCard = allLogs.filter(log => log.cardID === card.id);
+                const knowledgeState = knowledgeMap.get(card.id);
+
+                const totalInteractions = logsForCard.length;
+                const correctLogs = logsForCard.filter(log => log.wasCorrect);
+                const correctCount = correctLogs.length;
+
+                let averageIQS = 0;
+                if (correctCount > 0) {
+                    const totalIQS = correctLogs.reduce((sum, log) => {
+                        const iqs = calculateIQS({
+                            recallLatency: log.latency || 2000,
+                            answerFluency: log.fluency || 5,
+                            totalCorrections: log.corrections || 0,
+                            attemptCount: log.attempts || 1
+                        });
+                        return sum + iqs;
+                    }, 0);
+                    averageIQS = totalIQS / correctCount;
+                }
+
+                return {
+                    question: card.question,
+                    totalInteractions: totalInteractions,
+                    correctPercentage: totalInteractions > 0 ? (correctCount / totalInteractions) * 100 : 0,
+                    avgIQS: averageIQS,
+                    stability: knowledgeState?.stability || 'N/A',
+                    masteryScore: knowledgeState?.masteryScore || 'N/A',
+                    lastReviewed: knowledgeState?.lastReviewed ? new Date(knowledgeState.lastReviewed).toLocaleDateString() : 'Never'
+                };
+            });
+
+            if (cardStats.length === 0) {
+                resultContainer.innerHTML = '<p>This deck has no cards.</p>';
+                return;
+            }
+
+            let tableHTML = `
+                <table class="stats-table">
+                    <thead>
+                        <tr>
+                            <th>Question</th>
+                            <th>Correct %</th>
+                            <th>Avg. IQS</th>
+                            <th>Stability</th>
+                            <th>Mastery</th>
+                            <th>Last Reviewed</th>
+                            <th>Interactions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            cardStats.forEach(stat => {
+                tableHTML += `
+                    <tr>
+                        <td title="${stat.question}">${stat.question}</td>
+                        <td>${stat.correctPercentage.toFixed(1)}%</td>
+                        <td>${(stat.avgIQS).toFixed(2)}</td>
+                        <td>${typeof stat.stability === 'number' ? stat.stability.toFixed(2) : stat.stability}</td>
+                        <td>${typeof stat.masteryScore === 'number' ? stat.masteryScore.toFixed(2) : stat.masteryScore}</td>
+                        <td>${stat.lastReviewed}</td>
+                        <td>${stat.totalInteractions}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            resultContainer.innerHTML = tableHTML;
         }
 
         function renderHistograms(logs) {
@@ -1594,9 +1736,7 @@
             });
         }
 
-        /**
-         * Renders the time-series graph of interactions per day.
-         */
+
         function renderInteractionsTimeSeries(logs) {
             const canvasId = 'interactionsTimeSeries';
             if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
@@ -1627,10 +1767,7 @@
             });
         }
 
-        /**
-         * Sets up the dropdowns and event listeners for the error analysis tool.
-         */
-        function setupErrorAnalysis(logs) {
+        function setupErrorAnalysisAndDeckStats(allLogs, allKnowledgeStates) {
             const deckSelect = document.getElementById('errorDeckSelect');
             const cardSelect = document.getElementById('errorCardSelect');
 
@@ -1641,29 +1778,31 @@
                 option.textContent = deck.name;
                 deckSelect.appendChild(option);
             });
-
+            
             deckSelect.onchange = () => {
                 const deckId = deckSelect.value;
+
                 cardSelect.innerHTML = '<option value="">-- Select a Card --</option>';
                 if (deckId && decks[deckId]) {
                     decks[deckId].cards.forEach(card => {
                         const option = document.createElement('option');
                         option.value = card.id;
-                        option.textContent = card.question.substring(0, 50) + '...'; // Truncate long questions
+                        option.textContent = card.question.substring(0, 50) + '...'; // Truncate
                         cardSelect.appendChild(option);
                     });
                 }
-                generateErrorAnalysisReport(logs, null); // Clear results
+                generateErrorAnalysisReport(allLogs, null); // Clear old results
+
+                generateDeckStatistics(deckId, allLogs, allKnowledgeStates); 
             };
 
             cardSelect.onchange = () => {
-                generateErrorAnalysisReport(logs, cardSelect.value);
+                generateErrorAnalysisReport(allLogs, cardSelect.value);
             };
+
+            generateDeckStatistics(null, allLogs, allKnowledgeStates);
         }
 
-        /**
-         * Generates and displays the table of common incorrect answers for a given card.
-         */
         function generateErrorAnalysisReport(logs, cardId) {
             const resultContainer = document.getElementById('errorAnalysisResult');
             if (!cardId) {
@@ -1797,6 +1936,17 @@
                 const visibleModal = document.querySelector('.modal.show');
                 if (visibleModal) {
                     visibleModal.classList.remove('show');
+                }
+            }
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                focusLossStartTime = Date.now();
+            } else {
+                if (focusLossStartTime) {
+                    const awayDuration = Date.now() - focusLossStartTime;
+                    accumulatedAwayDuration += awayDuration;
+                    focusLossStartTime = null; 
                 }
             }
         });
@@ -1957,13 +2107,12 @@
     }
 
     function showEditor() { showView('editorView'); editorInitialize(); }
+
     async function showSettings() {
         const settings = await getDataFromDB('appData', 'userSettings');
          document.getElementById('usernameInput').value = settings?.username || '';
          document.getElementById('enableInStudyEditing').checked = settings?.enableInStudyEditing || false;
-         document.getElementById('newCardsPerDay').value = settings?.newCardsPerDay || 20;
-         const feedbackStyle = settings?.spacedLearningFeedbackStyle || 'simple';
-         document.querySelector(`input[name="spacedFeedbackStyle"][value="${feedbackStyle}"]`).checked = true;
+         
          showView('settingsView');
     }
 
@@ -2029,7 +2178,7 @@
             document.body.classList.add('dark-mode');
             document.getElementById('darkModeToggle').checked = true;
         }
-        updateDashboard();
+        await updateDashboard();
     }
 
     function formatDate(isoString) {
@@ -2068,7 +2217,10 @@
         showToast('Export started successfully!');
     }
 
-    function updateDashboard() {
+    async function updateDashboard() {
+        const knowledgeStates = await getAllDataFromDB('userKnowledgeState');
+        const knowledgeMap = new Map(knowledgeStates.map(item => [item.cardID, item]));
+
         const decksContainer = document.getElementById('decksContainer');
         const deckCount = Object.keys(decks).length;
         const subtitle = document.getElementById('subtitle');
@@ -2101,30 +2253,17 @@
             const sortedDecks = groupedDecks[category].sort((a,b) => new Date(b.created) - new Date(a.created));
 
             decksGrid.innerHTML = sortedDecks.map(deck => {
-                if (!deck.learnState || !deck.settings || !deck.learnState.buckets) {
-                    deck.settings = {...DEFAULT_DECK_SETTINGS, ...(deck.settings || {})};
-                    const allCards = deck.cards;
-                    deck.learnState = { 
-                        buckets: [[...allCards]],
-                        currentRound: 1, 
-                        maxBuckets: deck.settings.maxBuckets
-                    };
-                }
-                 while (deck.learnState.buckets.length < deck.settings.maxBuckets) deck.learnState.buckets.push([]);
-                 while (deck.learnState.buckets.length > deck.settings.maxBuckets) {
-                    const extraCards = deck.learnState.buckets.pop();
-                    if (deck.learnState.buckets.length > 0) deck.learnState.buckets[deck.learnState.buckets.length - 1].push(...extraCards);
-                }
-                deck.learnState.maxBuckets = deck.settings.maxBuckets;
                 
                 const totalCards = deck.cards.length;
-                const maxBuckets = deck.settings.maxBuckets;
-                let currentProgressPoints = 0;
-                deck.learnState.buckets.forEach((bucket, i) => {
-                    currentProgressPoints += bucket.length * i;
-                });
-                const maxProgressPoints = totalCards > 0 ? totalCards * (maxBuckets - 1) : 0;
-                const progressPercent = maxProgressPoints > 0 ? (currentProgressPoints / maxProgressPoints) * 100 : 0;
+                let progressPercent = 0;
+                if (totalCards > 0) {
+                    let totalMasteryScore = 0;
+                    deck.cards.forEach(card => {
+                        const mastery = knowledgeMap.get(card.id)?.masteryScore || 0.5;
+                        totalMasteryScore += mastery;
+                    });
+                    progressPercent = (totalMasteryScore / totalCards) * 100;
+                }
                 
                 return `<div class="deck-card" data-category="${category}" data-deck-id="${deck.id}">
                     <div class="deck-card-main-clickable" onclick="showDeckDetail('${deck.id}', this.parentElement)">
@@ -2142,7 +2281,6 @@
                      <div class="deck-actions">
                         <button class="action-btn learn-btn" onclick="event.stopPropagation(); configureStudy('learn', '${deck.id}')">Learn</button>
                         <button class="action-btn review-btn" onclick="event.stopPropagation(); configureStudy('review', '${deck.id}')">Review</button>
-                        <!--<button class="action-btn spaced-btn" onclick="event.stopPropagation(); configureStudy('spaced', '${deck.id}')">Spaced Learning</button>-->
                         <button class="action-btn export-btn" title="Export Deck" onclick="exportDeck('${deck.id}', event)">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                         </button>
@@ -2151,6 +2289,7 @@
             }).join('');
             decksContainer.appendChild(categoryFolder);
         }
+        updateDueCardCounts();
     }
 
     function showDeckDetail(deckId, cardElement) {
@@ -2572,8 +2711,6 @@
     
     async function saveStudySettings() {
         globalSettings.enableInStudyEditing = document.getElementById('enableInStudyEditing').checked;
-        globalSettings.newCardsPerDay = parseInt(document.getElementById('newCardsPerDay').value) || 20;
-        globalSettings.spacedLearningFeedbackStyle = document.querySelector('input[name="spacedFeedbackStyle"]:checked').value;
         await saveDataToDB('appData', { key: 'userSettings', ...globalSettings });
         showToast('Settings saved!');
     }
@@ -2647,26 +2784,15 @@
         }
 
         async function startLearnMode(deckId) {
-            document.getElementById('progressView').classList.add('hidden');
-            document.getElementById('cardView').classList.add('hidden');
-            document.getElementById('completeView').classList.add('hidden');
             currentMode = 'learn';
             currentDeckId = deckId;
             const deck = decks[deckId];
             deck.settings = {...DEFAULT_DECK_SETTINGS, ...(deck.settings || {})};
             
-            if (deck.learnState.maxBuckets !== deck.settings.maxBuckets) {
-                const allCards = deck.learnState.buckets.flat();
-                deck.learnState.buckets = [[...allCards]];
-                while (deck.learnState.buckets.length < deck.settings.maxBuckets) deck.learnState.buckets.push([]);
-                deck.learnState.maxBuckets = deck.settings.maxBuckets;
-                deck.learnState.currentRound = 1;
-                await saveDataToDB('decks', deck);
-            }
             studyState.settings = deck.settings;
-            studyState.buckets = JSON.parse(JSON.stringify(deck.learnState.buckets || []));
-            studyState.currentRound = deck.learnState.currentRound || 1;
+            studyState.currentRound = 1;
             studyState.startTime = new Date();
+            
             showView('studyMode');
             document.getElementById('studyTitle').textContent = 'Learning Mode';
             document.getElementById('studySubtitle').textContent = deck.name;
@@ -2681,19 +2807,18 @@
             currentDeckId = deckId;
             const deck = decks[deckId];
 
-            const feedbackStyle = globalSettings.spacedLearningFeedbackStyle || 'simple';
-
-            deck.settings = {...DEFAULT_DECK_SETTINGS, ...(deck.settings || {}), feedbackStyle: feedbackStyle };
-            await saveDataToDB('decks', deck);
-
-            const now = new Date();
             const allCards = [...deck.cards];
-            const dueCards = allCards.filter(c => new Date(c.sm2Data.dueDate) <= now && c.sm2Data.repetition > 0);
-            const newCards = allCards.filter(c => c.sm2Data.repetition === 0);
+            const knowledgeStates = await getAllDataFromDB('userKnowledgeState');
+            const knowledgeMap = new Map(knowledgeStates.map(item => [item.cardID, item]));
+
+            const dueCards = allCards.filter(card => {
+                const state = knowledgeMap.get(card.id);
+                if (!state) return true; 
+                const pRecall = calculatePRecall(state.stability, state.lastReviewed);
+                return pRecall <= 0.90;
+            });
             
-            const newCardsForSession = shuffleArray(newCards).slice(0, globalSettings.newCardsPerDay);
-            
-            studyState.roundCards = shuffleArray([...dueCards, ...newCardsForSession]);
+            studyState.roundCards = shuffleArray(dueCards);
             studyState.settings = deck.settings;
             studyState.currentRound = 1;
             studyState.currentCardIndex = 0;
@@ -2777,42 +2902,58 @@
             return (names[totalBuckets] && names[totalBuckets][index]) || `Bucket ${index + 1}`;
         }
 
-        function updateLearnProgress() {
+        async function updateLearnProgress() {
             const deck = decks[currentDeckId];
-            const maxBuckets = studyState.settings.maxBuckets;
-            const mastered = studyState.buckets[maxBuckets - 1]?.length || 0;
-            const total = deck.cards.length;
-            
-            const notesContainer = document.getElementById('deckNotesDisplay');
-            if (deck.notes && studyState.currentRound === 1) {
-                notesContainer.innerHTML = `<h3>Notes:</h3><div>${deck.notes}</div>`;
-                notesContainer.classList.remove('hidden');
+            const allCards = deck.cards;
+            const totalCards = allCards.length;
+
+            if (totalCards === 0) return;
+
+            const knowledgeStates = await getAllDataFromDB('userKnowledgeState');
+            const knowledgeMap = new Map(knowledgeStates.map(item => [item.cardID, item]));
+
+            let masteredCount = 0;
+            let totalMasteryScore = 0;
+
+            allCards.forEach(card => {
+                const mastery = knowledgeMap.get(card.id)?.masteryScore || 0.5;
+                if (mastery >= 0.95) {
+                    masteredCount++;
+                }
+                totalMasteryScore += mastery;
+            });
+
+            const deckMasteryPercent = (totalMasteryScore / totalCards) * 100;
+            const learningCount = totalCards - masteredCount;
+
+            document.getElementById('deckMasteryProgress').style.width = `${deckMasteryPercent}%`;
+            document.getElementById('deckMasteryValue').textContent = `${Math.round(deckMasteryPercent)}%`;
+            document.getElementById('masteredCardCount').textContent = masteredCount;
+            document.getElementById('learningCardCount').textContent = learningCount;
+
+            const poolList = document.getElementById('activePoolList');
+            if (studyState.activeLearningPool && studyState.activeLearningPool.length > 0) {
+                poolList.innerHTML = studyState.activeLearningPool.map(card => 
+                    `<div class="deck-card-item" style="padding: 10px; border: none;">${card.question}</div>`
+                ).join('');
             } else {
-                notesContainer.classList.add('hidden');
+                poolList.innerHTML = `<p style="text-align: center; color: var(--secondary-text);">Click 'Continue' to start!</p>`;
             }
 
-            if (mastered === total && total > 0) { 
+            const continueBtn = document.getElementById('continueBtn');
+            if (learningCount === 0) {
                 document.getElementById('progressTitle').textContent = 'Deck Mastered!';
-                const continueBtn = document.getElementById('continueBtn');
-                continueBtn.textContent = 'Finish';
-                continueBtn.classList.remove('btn-prominent')
+                document.getElementById('activeLearningPoolDisplay').classList.add('hidden');
+                continueBtn.textContent = 'Finish Session';
                 continueBtn.classList.add('btn-success');
                 continueBtn.onclick = showComplete;
-                return;
-             }
-            document.getElementById('progressTitle').textContent = 'Learning Progress';
-            document.getElementById('roundInfo').textContent = `Round ${studyState.currentRound}`;
-            document.getElementById('bucketsContainer').innerHTML = Array.from({length: maxBuckets}, (_, i) => `<div class="bucket"><div class="bucket-number">${getBucketName(i, maxBuckets)}</div><div class="bucket-count">${studyState.buckets[i]?.length || 0}</div></div>`).join('');
-            
-            let currentProgressPoints = 0;
-            studyState.buckets.forEach((bucket, i) => {
-                currentProgressPoints += bucket.length * i;
-            });
-            const maxProgressPoints = total > 0 ? total * (maxBuckets - 1) : 0;
-            const progress = maxProgressPoints > 0 ? (currentProgressPoints / maxProgressPoints) * 100 : 0;
-
-            document.getElementById('progressBarFill').style.width = `${progress}%`;
-            document.getElementById('statsContainer').innerHTML = `<div class="stat"><div class="stat-value">${mastered}</div><div class="stat-label">Mastered</div></div><div class="stat"><div class="stat-value">${total - mastered}</div><div class="stat-label">Remaining</div></div>`;
+            } else {
+                document.getElementById('progressTitle').textContent = 'Learning Progress';
+                document.getElementById('activeLearningPoolDisplay').classList.remove('hidden');
+                continueBtn.textContent = studyState.currentRound === 1 ? 'Start Round' : 'Continue Round';
+                continueBtn.classList.remove('btn-success');
+                continueBtn.onclick = continueStudy;
+            }
         }
 
         function updateReviewProgress() {
@@ -2865,27 +3006,37 @@
             }
         }
 
-        function continueStudy() {
+        async function continueStudy() {
             if (currentMode === 'learn') {
-                const cardsPerRound = studyState.settings.cardsPerRound === 'all' ? 999 : parseInt(studyState.settings.cardsPerRound);
-                const availableCards = studyState.buckets.slice(0, -1).flat();
-                
-                const newCards = availableCards.filter(c => c.sm2Data.repetition === 0);
-                const reviewCards = availableCards.filter(c => c.sm2Data.repetition > 0)
-                                                 .sort((a, b) => new Date(a.sm2Data.dueDate) - new Date(b.sm2Data.dueDate));
-                
-                const newCardsCount = Math.min(newCards.length, Math.floor(cardsPerRound / 2));
-                const reviewCardsCount = cardsPerRound - newCardsCount;
+                const allCards = decks[currentDeckId].cards;
+                const knowledgeStates = await getAllDataFromDB('userKnowledgeState');
+                const knowledgeMap = new Map(knowledgeStates.map(item => [item.cardID, item]));
 
-                const roundNewCards = shuffleArray(newCards).slice(0, newCardsCount);
-                const roundReviewCards = reviewCards.slice(0, reviewCardsCount);
+                const nonMasteredCards = allCards
+                    .map(card => ({
+                        ...card,
+                        mastery: knowledgeMap.get(card.id)?.masteryScore || 0.5
+                    }))
+                    .filter(card => card.mastery < 0.95); 
+
+                nonMasteredCards.sort((a, b) => a.mastery - b.mastery);
+
+                let poolSize;
+                if (lastKnownFocusScore >= 0.85) {
+                    poolSize = 7; 
+                } else if (lastKnownFocusScore >= 0.65) {
+                    poolSize = 5; 
+                } else {
+                    poolSize = 3; 
+                }
+
+                studyState.activeLearningPool = nonMasteredCards.slice(0, poolSize);
                 
-                studyState.roundCards = shuffleArray([...roundNewCards, ...roundReviewCards]);
+                studyState.roundCards = shuffleArray(studyState.activeLearningPool);
 
             } else if (currentMode === 'review') {
                 let prioritized = [];
                 let others = [];
-
                 if (studyState.lastRoundIncorrect && studyState.lastRoundIncorrect.length > 0) {
                     const incorrectIds = new Set(studyState.lastRoundIncorrect.map(c => c.id));
                     studyState.stillLearning.forEach(card => {
@@ -2895,121 +3046,118 @@
                 } else {
                     others = [...studyState.stillLearning];
                 }
-                studyState.lastRoundIncorrect = []; 
-
+                studyState.lastRoundIncorrect = [];
                 let sortedCards;
                 if (studyState.settings.reviewOrder === 'alphabetical') {
                     prioritized.sort((a, b) => a.question.localeCompare(b.question));
                     others.sort((a, b) => a.question.localeCompare(b.question));
                     sortedCards = prioritized.concat(others);
-                } else { 
+                } else {
                     sortedCards = shuffleArray(prioritized).concat(shuffleArray(others));
                 }
                 studyState.roundCards = sortedCards;
-            } else if (currentMode === 'spaced') {
-                
             }
 
             studyState.currentCardIndex = 0;
-            if(studyState.roundCards.length > 0) {
+            if (studyState.roundCards.length > 0) {
                 transitionSubView(document.getElementById('progressView'), document.getElementById('cardView'));
                 showNextCard();
+            } else {
+                if(currentMode === 'learn') {
+                   showComplete();
+                } else {
+                   showProgress();
+                   showToast("No cards available to study in this round.");
+                }
             }
-            else { showProgress(); showToast("No cards available to study in this round."); }
         }
 
-        function showNextCard() {
-            if (studyState.currentCardIndex >= studyState.roundCards.length) {
-                studyState.currentRound++;
-                saveStudyProgress();
-                showProgress();
-                return;
-            }
-            window.scrollTo(0, 0);
-            const card = studyState.roundCards[studyState.currentCardIndex];
-            const flashcardElem = document.querySelector('#cardView .flashcard');
-            flashcardElem.classList.remove('is-flipped');
-            
-            document.getElementById('cardRoundInfo').textContent = `Round ${studyState.currentRound} - Card ${studyState.currentCardIndex + 1} of ${studyState.roundCards.length}`;
-            
-            document.getElementById('cardQuestion').innerHTML = card.question;
-            const questionContent = document.getElementById('cardQuestionContent');
-            const existingQImg = questionContent.querySelector('.card-image');
-            if(existingQImg) existingQImg.remove();
-            if(card.questionImage) questionContent.innerHTML += `<img src="${card.questionImage}" class="card-image" style="margin: 15px auto 0 auto; display: block;">`;
+            function showNextCard() {
+                if (studyState.currentCardIndex >= studyState.roundCards.length && studyState.incorrectInThisRound.length > 0) {
+                    studyState.roundCards = studyState.roundCards.concat(shuffleArray(studyState.incorrectInThisRound));
+                    studyState.incorrectInThisRound = []; 
+                    showToast("Let's review the ones you missed.", "info");
+                }
 
-            document.getElementById('cardAnswer').innerHTML = card.answer;
-            const answerContent = document.getElementById('cardAnswerContent');
-             const existingAImg = answerContent.querySelector('#cardAnswer .card-image');
-            if(existingAImg) existingAImg.remove();
-            if(card.answerImage) document.getElementById('cardAnswer').innerHTML += `<img src="${card.answerImage}" class="card-image" style="margin: 15px auto 0 auto; display: block;">`;
-            
-            document.getElementById('cardAnswerContent').classList.add('hidden');
-            document.getElementById('simpleAnswerButtons').classList.remove('hidden');
-            document.getElementById('advancedAnswerButtons').classList.add('hidden');
-            document.getElementById('correctBtn').classList.add('hidden');
-            document.getElementById('incorrectBtn').classList.add('hidden');
-            document.getElementById('showQuestionBtn').classList.add('hidden');
-            document.getElementById('userAnswerDisplay').classList.add('hidden');
-            
-            const writeInput = document.getElementById('writeAnswerInput');
-            writeInput.classList.remove('correct', 'incorrect');
-            const accentToggleBtn = document.getElementById('accentToggleBtn');
-            const switchStudyModeBtn = document.getElementById('switchStudyModeBtn');
-            const editStudyCardBtn = document.getElementById('editStudyCardBtn');
+                if (studyState.currentCardIndex >= studyState.roundCards.length) {
+                    studyState.currentRound++;
+                    saveStudyProgress();
+                    showProgress();
+                    return;
+                }
+                
+                window.scrollTo(0, 0);
+                const card = studyState.roundCards[studyState.currentCardIndex];
+                const flashcardElem = document.querySelector('#cardView .flashcard');
+                flashcardElem.classList.remove('is-flipped');
+                
+                document.getElementById('cardRoundInfo').textContent = `Round ${studyState.currentRound} - Card ${studyState.currentCardIndex + 1} of ${studyState.roundCards.length}`;
+                document.getElementById('cardQuestion').innerHTML = card.question;
+                const questionContent = document.getElementById('cardQuestionContent');
+                const existingQImg = questionContent.querySelector('.card-image');
+                if(existingQImg) existingQImg.remove();
+                if(card.questionImage) questionContent.innerHTML += `<img src="${card.questionImage}" class="card-image" style="margin: 15px auto 0 auto; display: block;">`;
 
-            const isWriteMode = (currentMode === 'learn' && studyState.settings.learnMode === 'write') || (currentMode === 'review' && studyState.settings.reviewMode === 'write');
-
-            if (isWriteMode) {
-                startInteractionLog(card.id);
-
-                document.getElementById('showAnswerBtn').classList.add('hidden');
-                document.getElementById('checkAnswerBtn').classList.remove('hidden');
-                writeInput.value = '';
-                writeInput.classList.remove('hidden');
-                writeInput.disabled = false;
-                setTimeout(() => writeInput.focus(), 100);
-                accentToggleBtn.classList.remove('hidden');
-                updateAccentButtonsVisibility();
-            } else {
-                document.getElementById('showAnswerBtn').classList.remove('hidden');
+                document.getElementById('cardAnswer').innerHTML = card.answer;
+                const answerContent = document.getElementById('cardAnswerContent');
+                const existingAImg = answerContent.querySelector('#cardAnswer .card-image');
+                if(existingAImg) existingAImg.remove();
+                if(card.answerImage) document.getElementById('cardAnswer').innerHTML += `<img src="${card.answerImage}" class="card-image" style="margin: 15px auto 0 auto; display: block;">`;
+                
+                document.getElementById('cardAnswerContent').classList.add('hidden');
+                document.getElementById('userAnswerDisplay').classList.add('hidden');
+                document.getElementById('writeAnswerInput').classList.remove('correct', 'incorrect');
+                
+                const writeInput = document.getElementById('writeAnswerInput');
+                const accentToggleBtn = document.getElementById('accentToggleBtn');
+                const switchStudyModeBtn = document.getElementById('switchStudyModeBtn');
+                const editStudyCardBtn = document.getElementById('editStudyCardBtn');
+                
+                document.getElementById('simpleAnswerButtons').classList.remove('hidden');
+                document.getElementById('advancedAnswerButtons').classList.add('hidden');
+                document.getElementById('correctBtn').classList.add('hidden');
+                document.getElementById('incorrectBtn').classList.add('hidden');
+                document.getElementById('showQuestionBtn').classList.add('hidden');
                 document.getElementById('checkAnswerBtn').classList.add('hidden');
-                writeInput.classList.add('hidden');
-                accentToggleBtn.classList.add('hidden');
-                document.getElementById('accentButtonsContainer').classList.add('hidden');
-            }
+                document.getElementById('dontKnowBtn').classList.add('hidden');
+                document.getElementById('showAnswerBtn').classList.add('hidden');
 
-            switchStudyModeBtn.classList.toggle('hidden', currentMode !== 'learn');
-            editStudyCardBtn.classList.toggle('hidden', !globalSettings.enableInStudyEditing);
+                const isWriteMode = (currentMode === 'learn' && studyState.settings.learnMode === 'write') || (currentMode === 'review' && studyState.settings.reviewMode === 'write');
 
-            const bucketInfo = document.getElementById('cardBucketInfo');
-            if (currentMode === 'learn' || currentMode === 'spaced') {
-                let bucketName = 'Unknown';
-                if (currentMode === 'spaced') {
-                    const now = new Date();
-                    const dueDate = new Date(card.sm2Data.dueDate);
-                    if (card.sm2Data.repetition === 0) {
-                        bucketName = 'New Card';
-                    } else if (dueDate <= now) {
-                        bucketName = 'Due for Review';
+                if (isWriteMode) {
+                    startInteractionLog(card.id);
+                    document.getElementById('checkAnswerBtn').classList.remove('hidden');
+                    document.getElementById('dontKnowBtn').classList.remove('hidden');
+                    writeInput.value = '';
+                    writeInput.classList.remove('hidden');
+                    writeInput.disabled = false;
+                    setTimeout(() => writeInput.focus(), 100);
+                    accentToggleBtn.classList.remove('hidden');
+                    updateAccentButtonsVisibility();
+                } else { 
+                    document.getElementById('showAnswerBtn').classList.remove('hidden');
+                    writeInput.classList.add('hidden');
+                    accentToggleBtn.classList.add('hidden');
+                    document.getElementById('accentButtonsContainer').classList.add('hidden');
+                }
+
+                switchStudyModeBtn.classList.toggle('hidden', currentMode !== 'learn');
+                editStudyCardBtn.classList.toggle('hidden', !globalSettings.enableInStudyEditing);
+
+                const bucketInfo = document.getElementById('cardBucketInfo');
+                if (currentMode === 'learn' || currentMode === 'spaced') {
+                    const cardKnowledge = studyState.knowledgeStates.get(card.id);
+                    if(cardKnowledge) {
+                        bucketInfo.textContent = `Mastery: ${Math.round(cardKnowledge.masteryScore * 100)}%`;
+                        bucketInfo.style.display = 'block';
                     } else {
-                        const daysUntil = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
-                        bucketName = `Due in ${daysUntil} day${daysUntil > 1 ? 's' : ''}`;
+                        bucketInfo.style.display = 'none';
                     }
                 } else {
-                    for (let i = 0; i < studyState.buckets.length; i++) {
-                        if (studyState.buckets[i].some(c => c.id === card.id)) {
-                            bucketName = getBucketName(i, studyState.settings.maxBuckets);
-                            break;
-                        }
-                    }
+                    bucketInfo.style.display = 'none';
                 }
-                bucketInfo.textContent = `${bucketName}`;
-                bucketInfo.style.display = 'block';
-            } else {
-                bucketInfo.style.display = 'none';
             }
-        }
+
 
         function showAnswer() {
             document.querySelector('#cardView .flashcard').classList.add('is-flipped');
@@ -3017,11 +3165,11 @@
             document.getElementById('showAnswerBtn').classList.add('hidden');
             document.getElementById('checkAnswerBtn').classList.add('hidden');
             
-            const isForgivingMode = studyState.settings.forgivingAutomarking && 
-                                    (studyState.settings.learnMode === 'write' || studyState.settings.reviewMode === 'write');
+            const isAiAutoMarkingActive = studyState.settings.forgivingAutomarking &&
+                                          currentMode === 'learn' &&
+                                          studyState.settings.learnMode === 'write';
 
-            // If we are in forgiving auto-marking mode, don't show the manual grading buttons
-            if (!isForgivingMode) {
+            if (!isAiAutoMarkingActive) {
                 if (currentMode === 'spaced' && studyState.settings.feedbackStyle === 'advanced') {
                     document.getElementById('simpleAnswerButtons').classList.add('hidden');
                     document.getElementById('advancedAnswerButtons').classList.remove('hidden');
@@ -3034,14 +3182,24 @@
             document.getElementById('showQuestionBtn').classList.remove('hidden');
         }
         
-        function showQuestion() {
+            function showQuestion() {
             document.querySelector('#cardView .flashcard').classList.remove('is-flipped');
+            
             document.getElementById('showQuestionBtn').classList.add('hidden');
-            document.getElementById('showAnswerBtn').classList.remove('hidden');
             document.getElementById('correctBtn').classList.add('hidden');
             document.getElementById('incorrectBtn').classList.add('hidden');
             document.getElementById('advancedAnswerButtons').classList.add('hidden');
+
+            if (studyState.isRetypingIncorrect) {
+                document.getElementById('checkAnswerBtn').classList.remove('hidden');
+                document.getElementById('dontKnowBtn').classList.add('hidden');
+            } else {
+                document.getElementById('showAnswerBtn').classList.remove('hidden');
+                document.getElementById('checkAnswerBtn').classList.add('hidden'); 
+            }
         }
+
+
 
         function autoCheckAnswer() {
             const userInput = document.getElementById('writeAnswerInput');
@@ -3070,8 +3228,41 @@
 
             if (isForgivingMode) {
                 const distance = levenshteinDistance(userAnswer, correctAnswer);
-                const tolerance = Math.max(1, Math.floor(correctAnswer.length * 0.1));
-                isCorrect = distance <= tolerance;
+                const maxLength = Math.max(userAnswer.length, correctAnswer.length);
+                const errorRatio = distance / maxLength;
+                
+                if (errorRatio <= 0.15) {
+                    isCorrect = true;
+                    const feedbackEl = document.getElementById('feedbackMessage');
+                    feedbackEl.textContent = `Well done! The correct answer is "${correctAnswer}".`;
+                    feedbackEl.style.color = "var(--primary-color)";
+                    
+                    userInput.classList.add('correct');
+                    userInput.disabled = true;
+                    
+                    setTimeout(() => {
+                        feedbackEl.textContent = '';
+                        moveCard(card, true);
+                    }, 2000);
+                    return; 
+                    
+                } else if (errorRatio > 0.15) {
+                    isCorrect = false;
+                    const feedbackEl = document.getElementById('feedbackMessage');
+                    feedbackEl.textContent = `Not quite. The correct answer is "${correctAnswer}". Please type it to continue.`;
+                    feedbackEl.style.color = "var(--danger-color)";
+
+                    showAnswer
+                    
+                    studyState.isRetypingIncorrect = true;
+                    userInput.value = '';
+                    userInput.classList.remove('incorrect');
+                    userInput.disabled = false;
+                    userInput.focus();
+                    
+                    setTimeout(() => feedbackEl.textContent = '', 3000);
+                    return;
+                }
             } else {
                 let processedUserAnswer = userAnswer;
                 let processedCorrectAnswer = correctAnswer;
@@ -3099,24 +3290,142 @@
                 };
                 logInteraction(finalLog);
             }
-            if (studyState.isRetypingIncorrect) {
-                if (isCorrect) {
-                    studyState.isRetypingIncorrect = false;
-                    
-                    userInput.classList.add('correct');
-                    userInput.disabled = true;
 
-                    setTimeout(() => {
-                        moveCard(card, false); 
-                    }, 400); 
-                    
-                    return; 
-                } else {
-                    showToast("That's not quite right. Please type the answer exactly as shown.", "error");
-                    userInput.value = ''; 
-                    userInput.focus();
-                    return; 
+            function autoCheckAnswer() {
+                const userInput = document.getElementById('writeAnswerInput');
+                const card = studyState.roundCards[studyState.currentCardIndex];
+                if (!card || userInput.value.trim() === '') return;
+
+                const submissionTime = performance.now();
+                
+                const recallLatency = currentInteractionLog.firstKeyPressTime 
+                    ? Math.round(currentInteractionLog.firstKeyPressTime - currentInteractionLog.questionLoadTime) 
+                    : null; 
+                let answerFluency = 0;
+                if (currentInteractionLog.firstKeyPressTime) {
+                    const typingDuration = submissionTime - currentInteractionLog.firstKeyPressTime;
+                    if (typingDuration > 0) {
+                        const charCount = userInput.value.trim().length;
+                        answerFluency = parseFloat((charCount / (typingDuration / 1000))).toFixed(2);
+                    }
                 }
+                
+                let isCorrect;
+                const userAnswer = userInput.value.trim();
+                const correctAnswer = card.answer.trim();
+
+                const isForgivingMode = studyState.settings.forgivingAutomarking && currentMode === 'learn' && studyState.settings.learnMode === 'write';
+
+                if (isForgivingMode) {
+                    const distance = levenshteinDistance(userAnswer, correctAnswer);
+                    const maxLength = Math.max(userAnswer.length, correctAnswer.length);
+                    const errorRatio = distance / maxLength;
+                    
+                    if (errorRatio <= 0.15) {
+                        isCorrect = true;
+                        const feedbackEl = document.getElementById('feedbackMessage');
+                        feedbackEl.textContent = `So close! The correct answer is shown above.`;
+                        feedbackEl.style.color = "var(--primary-color)";
+                        userInput.classList.add('correct');
+                        userInput.disabled = true;
+                        showAnswer();
+                        setTimeout(() => {
+                            feedbackEl.textContent = '';
+                            moveCard(card, true);
+                        }, 2500);
+                        return; 
+                        
+                    } else {
+                        isCorrect = false;
+                        const feedbackEl = document.getElementById('feedbackMessage');
+                        feedbackEl.textContent = `Not quite. Please type the answer shown above to continue.`;
+                        feedbackEl.style.color = "var(--danger-color)";
+                        showAnswer();
+                        studyState.isRetypingIncorrect = true;
+                        userInput.value = '';
+                        userInput.classList.remove('incorrect');
+                        userInput.disabled = false;
+                        userInput.focus();
+                        setTimeout(() => feedbackEl.textContent = '', 4000);
+                        return;
+                    }
+                } else {
+                    let processedUserAnswer = userAnswer;
+                    let processedCorrectAnswer = correctAnswer;
+                    if (!studyState.settings.caseSensitive) {
+                        processedUserAnswer = processedUserAnswer.toLowerCase();
+                        processedCorrectAnswer = processedCorrectAnswer.toLowerCase();
+                    }
+                    if (!studyState.settings.punctuation) {
+                        const punc = /[.,/#!$%^&*;:{}=\-_`~()]/g;
+                        processedUserAnswer = processedUserAnswer.replace(punc, "");
+                        processedCorrectAnswer = processedCorrectAnswer.replace(punc, "");
+                    }
+                    isCorrect = processedUserAnswer === processedCorrectAnswer;
+                }
+
+                if (!studyState.isRetypingIncorrect) {
+                    const finalLog = {
+                        cardID: currentInteractionLog.cardID,
+                        wasCorrect: isCorrect,
+                        recallLatency: recallLatency,
+                        answerFluency: answerFluency,
+                        totalCorrections: currentInteractionLog.backspaceCount + currentInteractionLog.deleteCount,
+                        attemptCount: currentInteractionLog.attemptCount,
+                        userAnswer: userAnswer
+                    };
+                    logInteraction(finalLog);
+                }
+
+                if (studyState.isRetypingIncorrect) {
+                    if (isCorrect) {
+                        studyState.isRetypingIncorrect = false;
+                        userInput.classList.add('correct');
+                        userInput.disabled = true;
+                        const checkBtn = document.getElementById('checkAnswerBtn');
+                        checkBtn.classList.add('feedback-correct');
+                        setTimeout(() => {
+                            checkBtn.classList.remove('feedback-correct'); 
+                            moveCard(card, false); 
+                        }, 1200); 
+                        return; 
+                    } else {
+                        showToast("That's not quite right. Please type the answer exactly as shown.", "error");
+                        userInput.value = ''; 
+                        userInput.focus();
+                        return; 
+                    }
+                }
+
+                userInput.classList.toggle('correct', isCorrect);
+                userInput.classList.toggle('incorrect', !isCorrect);
+                userInput.disabled = true;
+
+                showAnswer();
+
+                const feedbackEl = document.getElementById('feedbackMessage');
+                if (isCorrect) {
+                    const iqs = calculateIQS({
+                        recallLatency: recallLatency || 2000,
+                        answerFluency: answerFluency || 5,
+                        totalCorrections: currentInteractionLog.backspaceCount + currentInteractionLog.deleteCount,
+                        attemptCount: currentInteractionLog.attemptCount
+                    });
+                    if (iqs > 0.9) {
+                        feedbackEl.textContent = "Perfect!";
+                        feedbackEl.style.color = "var(--success-color)";
+                    } else if (iqs > 0.6) {
+                        feedbackEl.textContent = "Got it.";
+                        feedbackEl.style.color = "var(--text-color)";
+                    } else {
+                        feedbackEl.textContent = "Correct, but let's review this again.";
+                        feedbackEl.style.color = "var(--secondary-text)";
+                    }
+                }
+                
+                setTimeout(() => {
+                    feedbackEl.textContent = '';
+                }, 2000);
             }
 
             userInput.classList.toggle('correct', isCorrect);
@@ -3134,36 +3443,87 @@
                     }
                 }, 1800);
             }
+        
+            const feedbackEl = document.getElementById('feedbackMessage');
+
+            if (isCorrect) {
+                const totalCorrections = currentInteractionLog.backspaceCount + currentInteractionLog.deleteCount;
+                const attemptCount = currentInteractionLog.attemptCount;
+
+                if (totalCorrections === 0 && attemptCount === 1) {
+                    feedbackEl.textContent = "Perfect!";
+                    feedbackEl.style.color = "var(--success-color)";
+                } else {
+                    const iqs = calculateIQS({
+                        recallLatency: recallLatency || 2000,
+                        answerFluency: answerFluency || 5,
+                        totalCorrections: totalCorrections,
+                        attemptCount: attemptCount
+                    });
+
+                    if (iqs > 0.75) { 
+                        feedbackEl.textContent = "Got it!";
+                        feedbackEl.style.color = "var(--text-color)";
+                    } else {
+                        feedbackEl.textContent = "Correct, but let's review this again.";
+                        feedbackEl.style.color = "var(--secondary-text)";
+                    }
+                }
+            } else {
+                feedbackEl.textContent = "Not quite. The correct answer is shown above.";
+                feedbackEl.style.color = "var(--danger-color)";
+            }
+
+            setTimeout(() => {
+                feedbackEl.textContent = '';
+            }, 2000);
+        }
+
+        async function updateUserBaseline() {
+            const allLogs = await getAllDataFromDB('interactionLogs');
+            const relevantLogs = allLogs.filter(log => log.wasCorrect && log.latency !== null && log.fluency > 0);
+
+            if (relevantLogs.length < 20) return;
+
+            const totalLatency = relevantLogs.reduce((sum, log) => sum + log.latency, 0);
+            const totalFluency = relevantLogs.reduce((sum, log) => sum + log.fluency, 0);
+
+            const avgLatency = totalLatency / relevantLogs.length;
+            const avgFluency = totalFluency / relevantLogs.length;
+            
+            globalSettings.userBaseline = {
+                latency: avgLatency * 1.2, 
+                fluency: avgFluency * 0.9  
+            };
+
+            await saveDataToDB('appData', { key: 'userSettings', ...globalSettings });
+            console.log("User baseline updated:", globalSettings.userBaseline);
         }
 
         async function moveCard(card, correct) {
             const cardInDeck = decks[currentDeckId].cards.find(c => c.id === card.id);
             if(cardInDeck) cardInDeck.isNew = false;
+     
+            const lastLog = currentInteractionLog; 
+            const userBaseline = globalSettings.userBaseline || { latency: 1500, fluency: 10 };
+            const iqs = calculateIQS({
+                recallLatency: lastLog.recallLatency || 2000,
+                answerFluency: lastLog.answerFluency || 5,
+                totalCorrections: lastLog.backspaceCount + lastLog.deleteCount,
+                attemptCount: lastLog.attemptCount || 1
+            }, userBaseline);
             
+            updateKnowledgeState(card, correct, iqs);
+
             const sm2 = new SM2Algorithm();
             const quality = correct ? 4 : 1; 
-            cardInDeck.sm2Data = sm2.calculateNextReview(cardInDeck)(quality);
-
-            if (currentMode === 'learn') {
-                for (let i = 0; i < studyState.settings.maxBuckets; i++) {
-                    const index = studyState.buckets[i]?.findIndex(c => c.id === card.id);
-                    if (index > -1) {
-                        studyState.buckets[i].splice(index, 1);
-                        let targetBucket;
-                        if (correct) {
-                            targetBucket = Math.min(i + 1, studyState.settings.maxBuckets - 1);
-                        } else {
-                            if (studyState.settings.maxBuckets > 3 && i > 0) {
-                                targetBucket = 1; 
-                            } else {
-                                targetBucket = 0;
-                            }
-                        }
-                        studyState.buckets[targetBucket].push(card);
-                        break;
-                    }
-                }
-            } else if (currentMode === 'review') {
+            if(cardInDeck) cardInDeck.sm2Data = sm2.calculateNextReview(cardInDeck)(quality);
+            
+            if (currentMode === 'learn' && !correct) {
+                studyState.incorrectInThisRound.push({ ...card });
+            }
+            
+            if (currentMode === 'review') {
                 if (correct) {
                     const index = studyState.stillLearning.findIndex(c => c.id === card.id);
                     if (index > -1) {
@@ -3179,7 +3539,43 @@
             await saveDataToDB('decks', decks[currentDeckId]);
             studyState.currentCardIndex++;
             showNextCard();
+            updateFocusMeter();
         }
+
+        function dontKnowAnswer() {
+            const card = studyState.roundCards[studyState.currentCardIndex];
+            if (!card) return;
+
+            logInteraction({
+                cardID: card.id,
+                wasCorrect: false,
+                recallLatency: null, 
+                answerFluency: 0,
+                totalCorrections: 0,
+                attemptCount: 1,
+                userAnswer: "[Don't Know]"
+            });
+
+            showAnswer();
+            
+            if ((currentMode === 'learn' || currentMode === 'review') && studyState.settings.retypeIncorrect) {
+                studyState.isRetypingIncorrect = true;
+                const writeInput = document.getElementById('writeAnswerInput');
+                writeInput.value = '';
+                writeInput.disabled = false;
+                writeInput.focus();
+                
+                document.getElementById('correctBtn').classList.add('hidden');
+                document.getElementById('incorrectBtn').classList.add('hidden');
+                document.getElementById('dontKnowBtn').classList.add('hidden');
+                document.getElementById('checkAnswerBtn').classList.remove('hidden');
+
+                showToast("Type the correct answer to continue.", "error");
+            } else {
+                markIncorrect(true); 
+            }
+        }
+
         
         async function markSpaced(quality) {
             if (!isActionAllowed()) return;
@@ -3219,9 +3615,12 @@
                 writeInput.value = '';
                 writeInput.disabled = false;
                 writeInput.focus();
+
                 document.getElementById('correctBtn').classList.add('hidden');
                 document.getElementById('incorrectBtn').classList.add('hidden');
+                document.getElementById('dontKnowBtn').classList.add('hidden'); 
                 document.getElementById('checkAnswerBtn').classList.remove('hidden');
+
                 showToast("Type the correct answer to continue.", "error");
                 return;
             }
@@ -3299,22 +3698,25 @@
             document.getElementById('finalStats').innerHTML = `<div class="stat"><div class="stat-value">${studyState.currentRound}</div><div class="stat-label">Total Rounds</div></div><div class="stat"><div class="stat-value">${decks[currentDeckId].cards.length}</div><div class="stat-label">Cards Mastered</div></div>`;
         }
 
-        async function endSession() {
-            if (studyState.startTime) {
-                const duration = Math.round((new Date() - studyState.startTime) / 1000);
-                analyticsData.totalStudyTime += duration;
-                analyticsData.sessions.unshift({
-                    date: new Date().toISOString(),
-                    deckName: decks[currentDeckId].name,
-                    mode: currentMode,
-                    duration: duration
-                });
-                if (analyticsData.sessions.length > 50) analyticsData.sessions.pop();
-                await saveDataToDB('appData', { key: 'analytics', ...analyticsData });
+            async function endSession() {
+                if (studyState.startTime) {
+                    const duration = Math.round((new Date() - studyState.startTime) / 1000);
+                    analyticsData.totalStudyTime += duration;
+                    analyticsData.sessions.unshift({
+                        date: new Date().toISOString(),
+                        deckName: decks[currentDeckId].name,
+                        mode: currentMode,
+                        duration: duration
+                    });
+                    if (analyticsData.sessions.length > 50) analyticsData.sessions.pop();
+                    await saveDataToDB('appData', { key: 'analytics', ...analyticsData });
+                }
+                await saveStudyProgress(); 
+                await updateUserBaseline();
+                studyState.isRetypingIncorrect = false;
+
+                backToDashboard();
             }
-            saveStudyProgress();
-            backToDashboard();
-        }
 
         function resetProgress() {
             showConfirmModal('Are you sure you want to reset your progress for this deck?', () => restartStudy());
@@ -3947,22 +4349,18 @@
 
         function calculateIQS(logData, userBaseline = { latency: 1500, fluency: 10 }) {
             const v_latency = 1 - (Math.min(logData.recallLatency / userBaseline.latency, 2) / 2);
-
             const v_fluency = Math.min(logData.answerFluency / userBaseline.fluency, 1.5) / 1.5;
-
-            const v_corrections = 1 / (1 + logData.totalCorrections);
-            
+            const v_corrections = 1 / (1 + logData.totalCorrections);  
             const v_attempts = 1 / logData.attemptCount;
-
             const W_latency = 0.30;
             const W_fluency = 0.20;
             const W_corrections = 0.25;
             const W_attempts = 0.25;
-
             const iqs = (W_latency * v_latency) + (W_fluency * v_fluency) + (W_corrections * v_corrections) + (W_attempts * v_attempts);
 
-            return Math.max(0, Math.min(1, iqs));
+            return Math.max(0, Math.min(1, iqs)); // Clamp score between 0 and 1.
         }
+
         async function fetchLatestDownloads() {
             const repo = 'TJ7755/Lagiote-Revise';
             const apiUrl = `https://api.github.com/repos/${repo}/releases`;
@@ -4017,11 +4415,157 @@
             }
         }
         
-        function showDownloadsModal() {
-            document.getElementById('downloadsModal').classList.add('show');
-            // Fetch the latest downloads every time the modal is opened
-            fetchLatestDownloads();
+        function calculateFocusScore(log) {
+            const TARGET_LATENCY = 3000; 
+            const MAX_LATENCY = 15000;   
+            const latency = log.latency === null ? TARGET_LATENCY : log.latency;
+
+            let latencyScore = 1.0;
+            if (latency > TARGET_LATENCY) {
+                if (latency >= MAX_LATENCY) {
+                    latencyScore = 0.0;
+                } else {
+                    latencyScore = 1.0 - ((latency - TARGET_LATENCY) / (MAX_LATENCY - TARGET_LATENCY));
+                }
+            }
+
+            const awayDuration = log.awayDuration || 0;
+            if (awayDuration > 0) {
+                const PENALTY_PER_SECOND = 0.20; 
+                const distractionPenalty = (awayDuration / 1000) * PENALTY_PER_SECOND;
+                
+                const finalScore = Math.max(0, latencyScore - distractionPenalty);
+                return finalScore;
+            }
+            
+            return latencyScore;
         }
+
+        function updateFocusMeter() {
+            if (!db) return;
+            const transaction = db.transaction(['interactionLogs'], 'readonly');
+            const store = transaction.objectStore('interactionLogs');
+            const request = store.getAll();
+            request.onsuccess = () => {
+                const allLogs = request.result;
+                const recentLogs = allLogs.slice(-7);
+                if (recentLogs.length < 3) return;
+
+                const focusScores = recentLogs.map(log => calculateFocusScore(log));
+                const averageFocusScore = focusScores.reduce((sum, score) => sum + score, 0) / focusScores.length;
+                
+                lastKnownFocusScore = averageFocusScore;
+
+                const focusDot = document.getElementById('focusDot');
+                if (averageFocusScore >= 0.85) {
+                    focusDot.style.backgroundColor = '#38a169';
+                } else if (averageFocusScore >= 0.65) {
+                    focusDot.style.backgroundColor = '#f6ad55';
+                } else {
+                    focusDot.style.backgroundColor = '#fc8181';
+                    if (studyState.currentCardIndex > 5) {
+                        document.getElementById('takeABreakModal').classList.add('show');
+                    }
+                }
+            };
+        }
+
+        async function updateKnowledgeState(card, wasCorrect, iqs = 0.5) {
+            if (!db) return;
+
+            const transaction = db.transaction(['userKnowledgeState'], 'readwrite');
+            const store = transaction.objectStore('userKnowledgeState');
+            const request = store.get(['default_user', card.id]);
+
+            request.onsuccess = () => {
+                let state = request.result;
+
+                if (!state) { 
+                    state = {
+                        userID: 'default_user', cardID: card.id, masteryScore: 0.5,
+                        stability: 1.0, lastReviewed: new Date().toISOString(), recallHistory: []
+                    };
+                }
+
+                const oldMastery = state.masteryScore;
+                const oldStability = state.stability;
+
+                let performanceWeight;
+                if (oldMastery < 0.6) {
+                    performanceWeight = 0.4;
+                } else if (oldMastery < 0.9) {
+                    performanceWeight = 0.25;
+                } else {
+                    performanceWeight = 0.1;
+                }
+                
+                const performance = wasCorrect ? (0.5 + (iqs * 0.5)) : 0; 
+                const newMastery = (oldMastery * (1 - performanceWeight)) + (performance * performanceWeight);
+
+                let newStability;
+                if (wasCorrect) {
+                    newStability = oldStability + (0.1 * oldMastery);
+                } else {
+                    newStability = oldStability - (0.2 * oldMastery);
+                }
+                
+                state.masteryScore = Math.max(0.01, Math.min(0.99, newMastery)); 
+                state.stability = Math.max(0.1, newStability); 
+                state.lastReviewed = new Date().toISOString();
+                state.recallHistory.push({ date: state.lastReviewed, wasCorrect });
+
+                store.put(state);
+            };
+            
+            request.onerror = (event) => {
+                console.error("Could not retrieve knowledge state for card:", event.target.error);
+            };
+        }
+
+        function calculatePRecall(stability, lastReviewedISO) {
+            if (!lastReviewedISO || !stability) return 0.5; 
+            const now = new Date();
+            const lastReviewed = new Date(lastReviewedISO);
+            const elapsedDays = (now.getTime() - lastReviewed.getTime()) / (1000 * 3600 * 24);
+
+            return Math.pow(2, -elapsedDays / stability);
+        }
+
+        async function updateDueCardCounts() {
+            const knowledgeStates = await getAllDataFromDB('userKnowledgeState');
+            const knowledgeMap = new Map(knowledgeStates.map(item => [item.cardID, item]));
+
+            for (const deckId in decks) {
+                const deck = decks[deckId];
+                let dueCount = 0;
+                deck.cards.forEach(card => {
+                    const state = knowledgeMap.get(card.id);
+                    if (!state) { 
+                        dueCount++;
+                    } else {
+                        const pRecall = calculatePRecall(state.stability, state.lastReviewed);
+                        if (pRecall <= 0.90) {
+                            dueCount++;
+                        }
+                    }
+                });
+
+                const spacedBtn = document.querySelector(`.deck-card[data-deck-id="${deckId}"] .spaced-btn`);
+                if (spacedBtn) {
+                    const existingBadge = spacedBtn.querySelector('.due-badge');
+                    if (existingBadge) existingBadge.remove();
+
+                    if (dueCount > 0) {
+                        const badge = document.createElement('span');
+                        badge.className = 'due-badge';
+                        badge.textContent = dueCount;
+                        badge.style.cssText = 'background-color: var(--danger-color); color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 8px;';
+                        spacedBtn.appendChild(badge);
+                    }
+                }
+            }
+        }
+
     </script>
 </body>
 </html>
