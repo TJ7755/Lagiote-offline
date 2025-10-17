@@ -1378,8 +1378,7 @@
     
     function initDB() {
         return new Promise((resolve, reject) => {
-            // Version number is increased from 4 to 5 to trigger the upgrade
-            const request = indexedDB.open('LagioteDB', 5); 
+            const request = indexedDB.open('LagioteDB', 5);
 
             request.onerror = event => reject("Error opening DB: " + event.target.errorCode);
             
@@ -1388,22 +1387,22 @@
                 resolve();
             };
 
-            // This is where the magic happens
             request.onupgradeneeded = event => {
                 db = event.target.result;
                 const transaction = event.target.transaction;
 
-                // Create 'concepts' store if it doesn't exist
+                if (!db.objectStoreNames.contains('decks')) {
+                    db.createObjectStore('decks', { keyPath: 'id' });
+                }
+                if (!db.objectStoreNames.contains('appData')) {
+                    db.createObjectStore('appData', { keyPath: 'key' });
+                }
                 if (!db.objectStoreNames.contains('concepts')) {
                     db.createObjectStore('concepts', { keyPath: 'conceptID' });
                 }
-                // Create 'userKnowledgeState' store if it doesn't exist
                 if (!db.objectStoreNames.contains('userKnowledgeState')) {
-                    // Using a composite key to ensure each user/card combo is unique
                     db.createObjectStore('userKnowledgeState', { keyPath: ['userID', 'cardID'] });
                 }
-                
-                // Create 'interactionLogs' store if it doesn't exist
                 if (!db.objectStoreNames.contains('interactionLogs')) {
                     const logStore = db.createObjectStore('interactionLogs', { keyPath: 'id', autoIncrement: true });
                     logStore.createIndex('by_cardID', 'cardID', { unique: false });
@@ -1411,10 +1410,7 @@
                     console.log("Created 'interactionLogs' object store.");
                 }
 
-                // --- DATA MIGRATION SCRIPT ---
-                // This runs only when the version number changes.
-                // It finds all your old cards and prepares them for the new system.
-                if (event.oldVersion < 5) {
+                if (event.oldVersion > 0 && event.oldVersion < 5) {
                     console.log("Starting database migration for cognitive engine...");
                     const deckStore = transaction.objectStore('decks');
                     const stateStore = transaction.objectStore('userKnowledgeState');
@@ -1439,7 +1435,7 @@
                                 }
                             });
                             if (deckNeedsUpdate) {
-                                deckStore.put(deck); // Save the changes to the deck
+                                deckStore.put(deck);
                             }
                         });
                         console.log("Cognitive engine migration complete.");
