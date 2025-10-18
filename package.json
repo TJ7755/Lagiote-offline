@@ -36,22 +36,6 @@
             "format": "ULFO",
             "icon": "assets/logo/icon.icns"
           }
-        },
-        {
-          "name": "@electron-forge/maker-deb",
-          "config": {
-            "options": {
-              "icon": "assets/logo/icon.png"
-            }
-          }
-        },
-        {
-          "name": "@electron-forge/maker-rpm",
-          "config": {
-            "options": {
-              "icon": "assets/logo/icon.png"
-            }
-          }
         }
       ]
     }
@@ -59,9 +43,7 @@
   "keywords": [],
   "devDependencies": {
     "@electron-forge/cli": "^7.9.0",
-    "@electron-forge/maker-deb": "^7.9.0",
     "@electron-forge/maker-dmg": "^7.9.0",
-    "@electron-forge/maker-rpm": "^7.9.0",
     "@electron-forge/maker-squirrel": "^7.9.0",
     "@electron-forge/maker-zip": "^7.9.0",
     "electron": "^38.1.2"
