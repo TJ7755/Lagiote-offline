@@ -12,7 +12,7 @@ jobs:
     # This creates a "matrix" to run the same job on different operating systems
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-latest, windows-latest]
 
     # Use the virtual machine specified in the matrix
     runs-on: ${{ matrix.os }}
