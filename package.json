@@ -14,7 +14,7 @@
   "config": {
     "forge": {
       "packagerConfig": {
-        "icon": "assets/icon"
+        "icon": "assets/logo/icon"
       },
       "makers": [
         {
@@ -34,14 +34,14 @@
           "name": "@electron-forge/maker-dmg",
           "config": {
             "format": "ULFO",
-            "icon": "assets/icon.icns"
+            "icon": "assets/logo/icon.icns"
           }
         },
         {
           "name": "@electron-forge/maker-deb",
           "config": {
             "options": {
-              "icon": "assets/icon.png"
+              "icon": "assets/logo/icon.png"
             }
           }
         },
@@ -49,7 +49,7 @@
           "name": "@electron-forge/maker-rpm",
           "config": {
             "options": {
-              "icon": "assets/icon.png"
+              "icon": "assets/logo/icon.png"
             }
           }
         }
