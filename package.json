@@ -1,10 +1,11 @@
 {
-  "name": "Lagiote-revise",
+  "name": "Lagiote Revise",
   "version": "1.0.0",
   "description": "Lagiote Revise - offline flashcard app",
   "main": "main.js",
-  "repository": "github:YOUR_USERNAME/YOUR_REPO_NAME",
-  "author": "Tom",
+  "productName": "Lagiote Revise",
+  "repository": "github:TJ7755/Lagiote-revise",
+  "author": "TJ7755",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -12,6 +13,9 @@
   },
   "config": {
     "forge": {
+      "packagerConfig": {
+        "icon": "assets/icon"
+      },
       "makers": [
         {
           "name": "@electron-forge/maker-squirrel",
@@ -29,17 +33,25 @@
         {
           "name": "@electron-forge/maker-dmg",
           "config": {
-            "background": "./assets/dmg-background.png",
-            "format": "ULFO"
+            "format": "ULFO",
+            "icon": "assets/icon.icns"
           }
         },
         {
           "name": "@electron-forge/maker-deb",
-          "config": {}
+          "config": {
+            "options": {
+              "icon": "assets/icon.png"
+            }
+          }
         },
         {
           "name": "@electron-forge/maker-rpm",
-          "config": {}
+          "config": {
+            "options": {
+              "icon": "assets/icon.png"
+            }
+          }
         }
       ]
     }
@@ -55,6 +67,7 @@
     "electron": "^38.1.2"
   },
   "dependencies": {
+    "@xenova/transformers": "^2.17.2",
     "electron-squirrel-startup": "^1.0.1",
     "update-electron-app": "^3.0.0"
   }

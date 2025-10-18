@@ -1,4 +1,5 @@
+const { contextBridge, ipcRenderer } = require('electron');
 
-const { contextBridge } = require('electron');
-
-contextBridge.exposeInMainWorld('electronAPI', {});
+contextBridge.exposeInMainWorld('electronAPI', {
+  generateDistractors: (data) => ipcRenderer.invoke('gemini-generate-distractors', data)
+});

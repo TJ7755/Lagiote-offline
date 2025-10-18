@@ -3,25 +3,24 @@
 // Modules to control application life and create native browser window
 const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
+const GEMINI_API_KEY = 'AIzaSyAYyGV855YTvQzWRM5oMAXVkNrXLLjIqug';
 
 if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
 function createWindow () {
-  // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    show: false, // <-- 1. Keep the window hidden on startup
-    backgroundColor: '#f7fafc', // <-- 2. Set a background color that matches your app's light theme
+    show: false,
+    backgroundColor: '#f7fafc',
     webPreferences: {
-      // The preload script is a secure bridge between Electron's Node.js environment
-      // and your web page (the "renderer" process).
+
       preload: path.join(__dirname, 'preload.js'),
       
-      // These are important for security
       contextIsolation: true,
+
       nodeIntegration: false,
     }
   });
@@ -29,13 +28,9 @@ function createWindow () {
   // and load the index.html of the app.
   mainWindow.loadFile('index.html');
 
-  // 3. Use the 'ready-to-show' event to show the window only when the page is fully rendered.
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
-
-  // Optional: Open the DevTools.
-  // mainWindow.webContents.openDevTools();
 }
 
 // This method will be called when Electron has finished
@@ -51,7 +46,53 @@ app.whenReady().then(() => {
   });
 });
 
+ipcMain.handle('gemini-generate-distractors', async (event, { question, answer }) => {
+  console.log("Received request to generate distractors for:", question);
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+  const prompt = `You are an expert quiz creator. For the following flashcard, generate exactly three plausible but incorrect multiple-choice options (distractors).
+
+Question: "${question}"
+Correct Answer: "${answer}"
+
+Rules:
+1. The distractors must be in the same language as the correct answer.
+2. The distractors should be related to the question's topic to be challenging.
+3. Provide ONLY the three incorrect options, each on a new line.
+4. DO NOT include the correct answer, any numbering, or any extra text.
+5. Make sure the distractors are similar in length and complexity to the correct answer.`;
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json();
+      console.error("Gemini API Error:", errorBody);
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const textResponse = data.candidates[0].content.parts[0].text;
+    
+    const distractors = textResponse.split('\n').filter(line => line.trim() !== '');
+    
+    console.log("Generated Distractors:", distractors);
+    return distractors;
+
+  } catch (error) {
+    console.error('Failed to call Gemini API:', error);
+    return null;
+  }
+});
+
 // Quit when all windows are closed, except on macOS.
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 });
+

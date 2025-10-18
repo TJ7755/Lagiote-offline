@@ -11,6 +11,7 @@
     <script src="./assets/js/pdf.min.js"></script>
     <script src="./assets/js/mammoth.browser.min.js"></script>
     <script src="./assets/js/chart.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1"></script>
     <link href="./assets/css/style.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="https://i.ibb.co/1fyDzymL/Study-Stack-Pro-Photoroom.png">
     <style>
@@ -93,9 +94,9 @@
         .deck-progress-bar-outer { width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden; }
         .deck-progress-bar-inner { height: 100%; border-radius: 4px; transition: width 0.5s ease-in-out; }
         .deck-card[data-category="Science"] .deck-progress-bar-inner { background-color: #4ecdc4; } .deck-card[data-category="Math"] .deck-progress-bar-inner { background-color: #667eea; } .deck-card[data-category="Language"] .deck-progress-bar-inner { background-color: #fab1a0; } .deck-card[data-category="History"] .deck-progress-bar-inner { background-color: #fd79a8; } .deck-card[data-category="Other"] .deck-progress-bar-inner { background-color: #a29bfe; }
-        .deck-actions { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; margin-top: 15px; }
-        .action-btn { flex: 1; padding: 12px 10px; border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s; font-family: 'Inter', sans-serif; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-        .export-btn { background: var(--button-secondary-bg); color: var(--button-secondary-text); border: 2px solid var(--border-color); padding: 10px; flex: 0 0 auto; width: 44px; grid-column: 3 / 4; grid-row: 1 / 3;}
+        .deck-actions { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; margin-top: 15px; align-items:center; }
+        .action-btn { flex: 1; padding: 12px 10px; border: none; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s; font-family: 'Inter', sans-serif; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 44px; grid-row: 1 / 2; }
+        .export-btn { grid-row: 1 / 2; background: var(--button-secondary-bg); color: var(--button-secondary-text); border: 2px solid var(--border-color); padding: 0; flex: 0 0 auto; width: 44px; height: 44px; display: flex; align-items: center; grid-column: 3 / 4; justify-content: center;}
         .export-btn:hover { background: var(--button-secondary-hover); border-color: #cbd5e0; }
         .learn-btn { background: var(--primary-color); color: white; }
         .learn-btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
@@ -509,7 +510,7 @@
                         <span class="deck-detail-category" id="deckDetailCategory"></span>
                         <h2 class="deck-detail-title" id="deckDetailTitle"></h2>
                     </div>
-                    <div class="deck-detail-actions">
+                    <div id="deckDetailActions" class="deck-detail-actions">
                         <button class="btn learn-btn" onclick="configureStudy('learn')">Learn</button>
                         <!--<button class="btn spaced-btn" onclick="configureStudy('spaced')">Spaced Learning</button>-->
                         <button class="btn review-btn" onclick="configureStudy('review')">Review</button>
@@ -701,6 +702,14 @@
                         <label for="deckCategory">Category</label>
                         <select id="deckCategory" class="form-group"></select>
                     </div>
+                    <div class="form-group">
+                        <label for="deckTypeHint">Deck Type (AI Hint)</label>
+                        <select id="deckTypeHint">
+                            <option value="General">General / Q&A</option>
+                            <option value="Vocabulary">Vocabulary</option>
+                            <option value="Sequence">Sequence / Ordered List</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -850,27 +859,39 @@
         </div>
         <div id="cardView" class="hidden sub-view">
             <div class="round-info" id="cardRoundInfo">Round 1 - Card 1 of 5</div>
-            <div class="flashcard">
-                <div class="flashcard-inner">
-                    <div class="flashcard-front">
-                        <div id="cardBucketInfo">New</div>
-                        <div id="cardQuestionContent">
-                            <div class="question" id="cardQuestion"></div>
+
+            <div id="flashcardViewContainer">
+                <div class="flashcard">
+                    <div class="flashcard-inner">
+                        <div class="flashcard-front">
+                            <div id="cardBucketInfo">New</div>
+                            <div id="cardQuestionContent">
+                                <div class="question" id="cardQuestion"></div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="flashcard-back">
-                        <div id="cardAnswerContent" class="hidden">
-                            <div class="answer" id="cardAnswer"></div>
+                        <div class="flashcard-back">
+                            <div id="cardAnswerContent" class="hidden">
+                                <div class="answer" id="cardAnswer"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <div id="mcqView" class="hidden" style="width: 100%;">
+                <div class="flashcard-front" style="min-height: 150px; margin-bottom: 20px;">
+                    <div class="question" id="mcqQuestion"></div>
+                </div>
+                <div id="mcqOptions" class="answer-buttons" style="flex-direction: column; gap: 15px; width: 100%;">
+                </div>
+            </div>
+
             <div style="text-align: center; margin-top: 20px;">
                 <textarea id="writeAnswerInput" class="form-group textarea hidden" placeholder="Type your answer here..."></textarea>
                 <div id="accentButtonsContainer" class="accent-buttons hidden"></div>
-                <div id="userAnswerDisplay" class="answer hidden" style="border: 2px solid var(--border-color); margin-bottom: 10px;"></div>
                 <div id="feedbackMessage" style="text-align: center; margin-top: 10px; font-weight: 500; min-height: 20px;"></div>
             </div>
+
             <div class="answer-buttons" id="simpleAnswerButtons">
                 <button class="btn btn-show" id="showAnswerBtn" onclick="showAnswer()">Show Answer</button>
                 <button class="btn btn-secondary hidden" id="showQuestionBtn" onclick="showQuestion()">Show Question</button>
@@ -1028,9 +1049,23 @@
                 <p style="font-size: 0.9rem; color: var(--secondary-text); text-align: left; margin-top: 10px;">Supports .json (exported from here), .csv, and .txt files.</p>
             </div>
         </div>
-        <div class="form-group">
-            <label for="importDeckName">New Deck Name</label>
-            <input type="text" id="importDeckName" placeholder="e.g., Biology Chapter 5">
+        <div class="form-row" style="margin-bottom: 0;">
+            <div class="form-group" style="flex: 2;">
+                <label for="importDeckName">New Deck Name</label>
+                <input type="text" id="importDeckName" placeholder="e.g., Biology Chapter 5">
+            </div>
+            <div class="form-group">
+                <label for="importDeckCategory">Category</label>
+                <select id="importDeckCategory"></select>
+            </div>
+            <div class="form-group">
+                <label for="importDeckTypeHint">Deck Type</label>
+                <select id="importDeckTypeHint">
+                    <option value="General">General / Q&A</option>
+                    <option value="Vocabulary">Vocabulary</option>
+                    <option value="Sequence">Sequence / Ordered List</option>
+                </select>
+            </div>
         </div>
         <div class="modal-actions">
             <button class="btn btn-success" onclick="importData()">Import and Create Deck</button>
@@ -1150,6 +1185,31 @@
         <div id="deckSettingsForm">
              <div class="settings-section">
                 <h4>Learn Mode Options</h4>
+
+                <div class="form-group">
+                    <label for="deckSettingsCardsPerRound">Cards Per Round (Learn Mode)</label>
+                    <input type="number" id="deckSettingsCardsPerRound" value="10" min="3" max="20">
+                </div>
+                
+                <div class="settings-section">
+                    <h4>Adaptive Learning</h4>
+                    <fieldset class="settings-option-group">
+                        <legend>Adaptive Question Formats</legend>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="adaptiveAutoToggle">
+                            <label for="adaptiveAutoToggle">Automatic Selection (Recommended)</label>
+                        </div>
+                        <hr style="border: none; border-top: 1px solid var(--border-color); margin: 10px 0;">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="adaptiveMcqToggle">
+                            <label for="adaptiveMcqToggle">Allow Multiple Choice Questions</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="adaptiveClozeToggle">
+                            <label for="adaptiveClozeToggle">Allow Fill-in-the-blank (Cloze)</label>
+                        </div>
+                    </fieldset>
+                </div>
                 <div class="form-group">
                     <fieldset class="settings-option-group">
                         <legend>Default Study Method</legend>
@@ -1166,24 +1226,6 @@
                 
                     </fieldset>
                 </div>
-                <div class="form-group">
-                    <label for="deckSettingsCardsPerRound">Cards per Round</label>
-                    <select id="deckSettingsCardsPerRound">
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                        <option value="15">15</option>
-                        <option value="20">20</option>
-                        <option value="all">All</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                     <label for="bucketCount">Number of Learning Buckets</label>
-                     <select id="bucketCount">
-                         <option value="3">3 Buckets</option>
-                         <option value="4">4 Buckets</option>
-                         <option value="5">5 Buckets</option>
-                     </select>
-                </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="retypeIncorrectToggle">
                     <label for="retypeIncorrectToggle">Require retyping incorrect answers</label>
@@ -1191,11 +1233,7 @@
             </div>
             <div class="settings-section">
                 <h4>Auto-marking (Type Mode)</h4>
-                <h5>AI Auto-Marking (Hides manual buttons)</h5><br>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="forgivingAutomarkingToggle">
-                    <label for="forgivingAutomarkingToggle">Enable AI Auto-marking</label>
-                </div>
+                
                 <h5>Auto-detection</h5><br>
                  <div class="checkbox-group">
                     <input type="checkbox" id="caseSensitiveToggle">
@@ -1300,8 +1338,12 @@
         activeLearningPool: [],
         knowledgeStates: new Map(),
         incorrectInThisRound: [],
+        incorrectInThisRound: [],
+        sequencePhase: 'Forward Chaining', // Can be 'Forward Chaining' or 'Full Recall'
+        sequenceCards: []
     };
-    const DEFAULT_DECK_SETTINGS = { learnMode: 'flashcard', reviewOrder: 'random', cardsPerRound: 10, maxBuckets: 4, caseSensitive: false, punctuation: false, retypeIncorrect: true, feedbackStyle: 'simple', forgivingAutomarking: false };
+    const DEFAULT_DECK_SETTINGS = { learnMode: 'flashcard', reviewOrder: 'random', cardsPerRound: 10, maxBuckets: 4, caseSensitive: false, punctuation: false, retypeIncorrect: true, feedbackStyle: 'simple', forgivingAutomarking: true };
+    const CURRENT_ANALYSIS_VERSION = 2; 
     let editorCardCounter = 0;
     let currentViewingDeckId = null;
     let activeView = 'dashboard';
@@ -1476,79 +1518,80 @@
     }
     
     async function logInteraction(logData) {
-    if (!db) {
-        console.error("Database not available for logging interaction.");
-        return;
-    }
+        if (!db) {
+            console.error("Database not available for logging interaction.");
+            return;
+        }
 
-    try {
-        const transaction = db.transaction(['interactionLogs'], 'readwrite');
-        const store = transaction.objectStore('interactionLogs');
-        
-        const logEntry = {
-            userID: 'default_user', 
-            cardID: logData.cardID,
-            timestamp: new Date().toISOString(),
-            wasCorrect: logData.wasCorrect,
-            latency: logData.recallLatency,
-            fluency: logData.answerFluency,
-            corrections: logData.totalCorrections,
-            attempts: logData.attemptCount,
-            userAnswer: logData.userAnswer,
-            synced: false 
-        };
-        
-        store.add(logEntry);
-
-        transaction.onerror = (event) => {
-            console.error("Error saving interaction log to IndexedDB:", event.target.error);
-        };
-    } catch (error) {
-        console.error("Failed to initiate IndexedDB transaction for logging:", error);
-    }
-
-
-    try {
-        const backendUrl = 'http://localhost:3000/api/log/interaction'; // Your local backend URL
-        
-        const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            // We send the same data structure to the backend
-            body: JSON.stringify({
-                userID: 'default_user',
+        try {
+            const transaction = db.transaction(['interactionLogs'], 'readwrite');
+            const store = transaction.objectStore('interactionLogs');
+            
+            const logEntry = {
+                userID: 'default_user', 
                 cardID: logData.cardID,
                 timestamp: new Date().toISOString(),
                 wasCorrect: logData.wasCorrect,
-                recallLatency: logData.recallLatency,
-                answerFluency: logData.answerFluency,
-                totalCorrections: logData.totalCorrections,
-                attemptCount: logData.attemptCount,
-                userAnswer: logData.userAnswer
-            }),
-            // Use a short timeout to prevent long waits on a slow network
-            signal: AbortSignal.timeout(5000) 
-        });
+                latency: logData.recallLatency,
+                fluency: logData.answerFluency,
+                corrections: logData.totalCorrections,
+                attempts: logData.attemptCount,
+                userAnswer: logData.userAnswer,
+                questionType: logData.questionType || 'Flashcard',
+                synced: false 
+            };
+            
+            store.add(logEntry);
 
-        if (!response.ok) {
-            // The server responded with an error (e.g., 400, 500)
-            console.warn(`Backend logging failed with status: ${response.status}`);
-        } else {
-            // Optional: If successful, you could later update the 'synced' flag
-            // in IndexedDB, but that's a more advanced synchronization feature.
-            // For now, just knowing it was sent is enough.
+            transaction.onerror = (event) => {
+                console.error("Error saving interaction log to IndexedDB:", event.target.error);
+            };
+        } catch (error) {
+            console.error("Failed to initiate IndexedDB transaction for logging:", error);
         }
-    } catch (error) {
-        // This block will catch network errors (e.g., user is offline, server is down)
-        if (error.name === 'AbortError') {
-            console.warn('Backend logging timed out.');
-        } else {
-            console.warn('Could not send log to backend. User might be offline.', error);
+
+
+        try {
+            const backendUrl = 'http://localhost:3000/api/log/interaction'; // Your local backend URL
+            
+            const response = await fetch(backendUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                // We send the same data structure to the backend
+                body: JSON.stringify({
+                    userID: 'default_user',
+                    cardID: logData.cardID,
+                    timestamp: new Date().toISOString(),
+                    wasCorrect: logData.wasCorrect,
+                    recallLatency: logData.recallLatency,
+                    answerFluency: logData.answerFluency,
+                    totalCorrections: logData.totalCorrections,
+                    attemptCount: logData.attemptCount,
+                    userAnswer: logData.userAnswer
+                }),
+                // Use a short timeout to prevent long waits on a slow network
+                signal: AbortSignal.timeout(5000) 
+            });
+
+            if (!response.ok) {
+                // The server responded with an error (e.g., 400, 500)
+                console.warn(`Backend logging failed with status: ${response.status}`);
+            } else {
+                // Optional: If successful, you could later update the 'synced' flag
+                // in IndexedDB, but that's a more advanced synchronization feature.
+                // For now, just knowing it was sent is enough.
+            }
+        } catch (error) {
+            // This block will catch network errors (e.g., user is offline, server is down)
+            if (error.name === 'AbortError') {
+                console.warn('Backend logging timed out.');
+            } else {
+                console.warn('Could not send log to backend. User might be offline.', error);
+            }
         }
     }
-}
 
         let chartInstances = {};
 
@@ -1587,6 +1630,7 @@
             }
 
             const knowledgeMap = new Map(allKnowledgeStates.map(item => [item.cardID, item]));
+            const isSequence = selectedDeck.typeHint === 'Sequence';
 
             const cardStats = selectedDeck.cards.map(card => {
                 const logsForCard = allLogs.filter(log => log.cardID === card.id);
@@ -1617,7 +1661,8 @@
                     avgIQS: averageIQS,
                     stability: knowledgeState?.stability || 'N/A',
                     masteryScore: knowledgeState?.masteryScore || 'N/A',
-                    lastReviewed: knowledgeState?.lastReviewed ? new Date(knowledgeState.lastReviewed).toLocaleDateString() : 'Never'
+                    lastReviewed: knowledgeState?.lastReviewed ? new Date(knowledgeState.lastReviewed).toLocaleDateString() : 'Never',
+                    order: card.order || Infinity 
                 };
             });
 
@@ -1626,10 +1671,15 @@
                 return;
             }
 
+            const cardsForStats = isSequence 
+                ? [...cardStats].sort((a, b) => a.order - b.order) 
+                : cardStats;
+
             let tableHTML = `
                 <table class="stats-table">
                     <thead>
                         <tr>
+                            ${isSequence ? '<th>Order</th>' : ''}
                             <th>Question</th>
                             <th>Correct %</th>
                             <th>Avg. IQS</th>
@@ -1642,9 +1692,10 @@
                     <tbody>
             `;
             
-            cardStats.forEach(stat => {
+            cardsForStats.forEach(stat => {
                 tableHTML += `
                     <tr>
+                        ${isSequence ? `<td>${stat.order}</td>` : ''}
                         <td title="${stat.question}">${stat.question}</td>
                         <td>${stat.correctPercentage.toFixed(1)}%</td>
                         <td>${(stat.avgIQS).toFixed(2)}</td>
@@ -1777,17 +1828,23 @@
             
             deckSelect.onchange = () => {
                 const deckId = deckSelect.value;
+                const selectedDeck = decks[deckId]; 
 
                 cardSelect.innerHTML = '<option value="">-- Select a Card --</option>';
-                if (deckId && decks[deckId]) {
-                    decks[deckId].cards.forEach(card => {
+                if (deckId && selectedDeck) {
+                    const cardsToDisplay = selectedDeck.typeHint === 'Sequence' 
+                        ? [...selectedDeck.cards].sort((a, b) => a.order - b.order) 
+                        : selectedDeck.cards;
+
+                    cardsToDisplay.forEach(card => {
                         const option = document.createElement('option');
                         option.value = card.id;
-                        option.textContent = card.question.substring(0, 50) + '...'; // Truncate
+                        const orderPrefix = selectedDeck.typeHint === 'Sequence' ? `[#${card.order}] ` : '';
+                        option.textContent = orderPrefix + card.question.substring(0, 50) + '...';
                         cardSelect.appendChild(option);
                     });
                 }
-                generateErrorAnalysisReport(allLogs, null); // Clear old results
+                generateErrorAnalysisReport(allLogs, null); 
 
                 generateDeckStatistics(deckId, allLogs, allKnowledgeStates); 
             };
@@ -2174,6 +2231,7 @@
             document.body.classList.add('dark-mode');
             document.getElementById('darkModeToggle').checked = true;
         }
+        await checkForOutdatedAnalysis();
         await updateDashboard();
     }
 
@@ -2184,34 +2242,32 @@
     }
     
     async function exportDeck(deckId, event) {
-        event.stopPropagation();
-        let deck = decks[deckId];
-        if (!deck) return;
-        showToast('Preparing export...', 'info', 2000);
-        
-        let deckToExport = JSON.parse(JSON.stringify(deck));
-        const compressionPromises = [];
+            event.stopPropagation();
+            const deck = decks[deckId];
+            if (!deck) return;
+            showToast('Preparing complete export...', 'info', 2000);
 
-        for (const card of deckToExport.cards) {
-            if (card.questionImage && card.questionImage.startsWith('data:image')) {
-                compressionPromises.push(compressImage(card.questionImage).then(compressed => card.questionImage = compressed));
-            }
-            if (card.answerImage && card.answerImage.startsWith('data:image')) {
-                compressionPromises.push(compressImage(card.answerImage).then(compressed => card.answerImage = compressed));
-            }
+            const allKnowledgeStates = await getAllDataFromDB('userKnowledgeState');
+            const cardIdsInDeck = new Set(deck.cards.map(c => c.id));
+            
+            const knowledgeStateForDeck = allKnowledgeStates.filter(state => cardIdsInDeck.has(state.cardID));
+
+            const exportPayload = {
+                deck: JSON.parse(JSON.stringify(deck)), 
+                knowledgeStateData: knowledgeStateForDeck
+            };
+
+            const dataStr = JSON.stringify(exportPayload, null, 2); 
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileDefaultName = `${deck.name.replace(/ /g, '_')}_export.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            
+            showToast('Complete export started successfully!');
         }
-
-        await Promise.all(compressionPromises);
-
-        const dataStr = JSON.stringify(deckToExport, null, 2); 
-        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-        const exportFileDefaultName = `${deck.name.replace(/ /g, '_')}_export.json`;
-        const linkElement = document.createElement('a');
-        linkElement.setAttribute('href', dataUri);
-        linkElement.setAttribute('download', exportFileDefaultName);
-        linkElement.click();
-        showToast('Export started successfully!');
-    }
 
     async function updateDashboard() {
         const knowledgeStates = await getAllDataFromDB('userKnowledgeState');
@@ -2261,22 +2317,35 @@
                     progressPercent = (totalMasteryScore / totalCards) * 100;
                 }
                 
+                let actionButtonsHTML;
+                if (deck.typeHint === 'Sequence') {
+                    actionButtonsHTML = `
+                        <button class="action-btn learn-btn spaced-btn" style="grid-column: 1 / 3;" onclick="event.stopPropagation(); startSequenceSession('${deck.id}')">
+                            Practice Sequence
+                        </button>
+                    `;
+                } else {
+                    actionButtonsHTML = `
+                        <button class="action-btn learn-btn" onclick="event.stopPropagation(); configureStudy('learn', '${deck.id}')">Learn</button>
+                        <button class="action-btn review-btn" onclick="event.stopPropagation(); configureStudy('review', '${deck.id}')">Review</button>
+                    `;
+                }
+
                 return `<div class="deck-card" data-category="${category}" data-deck-id="${deck.id}">
                     <div class="deck-card-main-clickable" onclick="showDeckDetail('${deck.id}', this.parentElement)">
-                         <div class="deck-header">
+                        <div class="deck-header">
                             <div class="deck-category">${category}</div>
                             <div class="deck-name">${deck.name}</div>
                             <div class="deck-info"><span>${totalCards} cards</span></div>
                         </div>
                         <div class="deck-progress-container">
-                             <div class="deck-progress-label"><span>Progress</span><span>${Math.round(progressPercent)}%</span></div>
-                             <div class="deck-progress-bar-outer"><div class="deck-progress-bar-inner" style="width: ${progressPercent}%;"></div></div>
+                            <div class="deck-progress-label"><span>Progress</span><span>${Math.round(progressPercent)}%</span></div>
+                            <div class="deck-progress-bar-outer"><div class="deck-progress-bar-inner" style="width: ${progressPercent}%;"></div></div>
                         </div>
                         <div class="deck-date">Created: ${formatDate(deck.created)}</div>
                     </div>
-                     <div class="deck-actions">
-                        <button class="action-btn learn-btn" onclick="event.stopPropagation(); configureStudy('learn', '${deck.id}')">Learn</button>
-                        <button class="action-btn review-btn" onclick="event.stopPropagation(); configureStudy('review', '${deck.id}')">Review</button>
+                    <div class="deck-actions">
+                        ${actionButtonsHTML}
                         <button class="action-btn export-btn" title="Export Deck" onclick="exportDeck('${deck.id}', event)">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                         </button>
@@ -2304,6 +2373,27 @@
         const category = deck.category || "Other";
         categoryElement.textContent = category;
         categoryElement.className = `deck-detail-category ${category}`;
+
+        const deckDetailActions = document.getElementById('deckDetailActions');
+        if (!deckDetailActions) {
+            console.error("Fatal Error: deckDetailActions element not found in the DOM.");
+            return; 
+        }
+
+        let sequenceBtn = deckDetailActions.querySelector('.sequence-btn');
+        if (deck.typeHint === 'Sequence') {
+            if (!sequenceBtn) {
+                sequenceBtn = document.createElement('button');
+                sequenceBtn.className = 'btn sequence-btn';
+                sequenceBtn.textContent = 'Practice Sequence';
+                sequenceBtn.style.backgroundColor = '#dd6b20';
+                sequenceBtn.onclick = () => startSequenceSession(deckId);
+                const reviewBtn = deckDetailActions.querySelector('.review-btn');
+                deckDetailActions.insertBefore(sequenceBtn, reviewBtn);
+            }
+        } else {
+            if (sequenceBtn) sequenceBtn.remove();
+        }
         
         const cardsList = document.getElementById('deckCardsList');
         cardsList.innerHTML = '';
@@ -2311,21 +2401,27 @@
         if (deck.cards.length === 0) {
             cardsList.innerHTML = '<p style="text-align: center; color: var(--secondary-text);">No cards in this deck yet.</p>';
         } else {
-            deck.cards.forEach((card, index) => {
+            const cardsToDisplay = (deck.typeHint === 'Sequence') 
+                ? [...deck.cards].sort((a, b) => a.order - b.order) 
+                : deck.cards;
+
+            cardsToDisplay.forEach((card, index) => {
                 const cardItem = document.createElement('div');
                 cardItem.className = 'deck-card-item';
+                const originalIndex = deck.cards.findIndex(c => c.id === card.id); // Find original index for editing
                 const newBadge = card.isNew ? '<span class="new-badge">New</span>' : '';
                 const questionImageHTML = card.questionImage ? `<img src="${card.questionImage}" class="card-image">` : '';
                 const answerImageHTML = card.answerImage ? `<img src="${card.answerImage}" class="card-image">` : '';
+                const orderText = card.order ? `${card.order}. ` : `${index + 1}. `;
                 cardItem.innerHTML = `<div class="deck-card-content">
-                        <div class="deck-card-question">${index + 1}. ${card.question} ${newBadge}</div>
+                        <div class="deck-card-question">${orderText}${card.question} ${newBadge}</div>
                         ${questionImageHTML}
                         <div class="deck-card-answer">${card.answer}</div>
                         ${answerImageHTML}
                     </div>
                     <div class="deck-card-actions">
-                        <button class="deck-card-action-btn edit" title="Edit Card" onclick="editCard('${deckId}', ${index}, 'detail')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-                        <button class="deck-card-action-btn delete" title="Delete Card" onclick="deleteCardFromDetail('${deckId}', ${index})"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg></button>
+                        <button class="deck-card-action-btn edit" title="Edit Card" onclick="editCard('${deckId}', ${originalIndex}, 'detail')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
+                        <button class="deck-card-action-btn delete" title="Delete Card" onclick="deleteCardFromDetail('${deckId}', ${originalIndex})"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg></button>
                     </div>`;
                 cardsList.appendChild(cardItem);
             });
@@ -2430,29 +2526,29 @@
         });
     }
     
-    async function createNewDeck(name, category, cards, notes = '') {
-        const deckId = Date.now().toString();
-        const settings = { ...DEFAULT_DECK_SETTINGS };
-        const sm2 = new SM2Algorithm();
-        const processedCards = cards.map(c => ({
-            ...c,
-            sm2Data: sm2.calculateNextReview(c)(3)
-        }));
+    async function createNewDeck(name, category, cards, notes = '', typeHint = 'General') {
+            const deckId = Date.now().toString();
+            const settings = { ...DEFAULT_DECK_SETTINGS };
+            
+            const tempDeck = { name, category, cards, notes, typeHint };
+            showToast("Analyzing new deck content...", "info", 2000);
+            await processDeckContent(tempDeck);
 
-        const newDeck = {
-            id: deckId, name, category, cards: processedCards, notes,
-            created: new Date().toISOString(),
-            settings: settings,
-            learnState: {
-                buckets: [[...processedCards], ...Array.from({length: settings.maxBuckets - 1}, () => [])],
-                currentRound: 1, maxBuckets: settings.maxBuckets
-            },
-            reviewState: { stillLearning: [...processedCards], correct: [], currentRound: 1, lastRoundIncorrect: [] }
-        };
-        decks[deckId] = newDeck;
-        await saveDataToDB('decks', newDeck);
-        return deckId;
-    }
+            const sm2 = new SM2Algorithm();
+            const processedCards = tempDeck.cards.map(c => ({
+                ...c,
+                sm2Data: sm2.calculateNextReview(c)(3)
+            }));
+
+            const newDeck = {
+                id: deckId, name, category, cards: processedCards, notes, typeHint,
+                created: new Date().toISOString(),
+                settings: settings,
+            };
+            decks[deckId] = newDeck;
+            await saveDataToDB('decks', newDeck);
+            return deckId;
+        }
 
     function editDeck(deckId) {
         const deck = decks[deckId];
@@ -2511,51 +2607,57 @@
     }
 
     function editorAddNewCard(card = {}) {
-    const { question = '', answer = '', questionImage = '', answerImage = '' } = card;
-    editorCardCounter++;
-    const container = document.getElementById('flashcardsContainer');
+        const { question = '', answer = '', questionImage = '', answerImage = '', order = '' } = card;
+        editorCardCounter++;
+        const container = document.getElementById('flashcardsContainer');
 
-    // Create a new row that will contain the card and the button
-    const newRow = document.createElement('div');
-    newRow.className = 'flashcard-editor-row';
-    newRow.setAttribute('data-card-id', editorCardCounter); // Move the ID to the row
+        const newRow = document.createElement('div');
+        newRow.className = 'flashcard-editor-row';
+        newRow.setAttribute('data-card-id', editorCardCounter);
 
-    const questionImagePreview = questionImage ? `<img src="${questionImage}">` : '';
-    const answerImagePreview = answerImage ? `<img src="${answerImage}">` : '';
+        const questionImagePreview = questionImage ? `<img src="${questionImage}">` : '';
+        const answerImagePreview = answerImage ? `<img src="${answerImage}">` : '';
 
-    // Set the inner HTML for the new row
-    newRow.innerHTML = `
-        <div class="flashcard-item">
-            <div class="flashcard-number">${document.querySelectorAll('.flashcard-editor-row').length + 1}.</div>
-            
-            <textarea class="question-input" placeholder="Question">${question}</textarea>
-            <div class="image-controls">
-                <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="triggerImageUpload(this)">Upload Image</button>
+        const deckType = document.getElementById('deckTypeHint').value;
+        const cardNumber = document.querySelectorAll('.flashcard-editor-row').length + 1;
+        const orderInputHTML = (deckType === 'Sequence') 
+            ? `<input type="number" class="card-order-input" value="${order || cardNumber}" style="width: 60px; margin-right: 10px; padding: 5px 8px; text-align: center;">` 
+            : '';
+
+        newRow.innerHTML = `
+            <div class="flashcard-item">
+                <div class="flashcard-number" style="display: flex; align-items: center;">
+                    ${orderInputHTML}
+                    <span>${cardNumber}.</span>
+                </div>
+                
+                <textarea class="question-input" placeholder="Question (e.g., The event or item in the sequence)">${question}</textarea>
+                <div class="image-controls">
+                    <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="triggerImageUpload(this)">Upload Image</button>
+                </div>
+                <div class="question-image-preview image-preview">${questionImagePreview}</div>
+                <input type="file" class="image-upload-input" accept="image/*" style="display:none;" onchange="handleImageFile(this)">
+                <input type="hidden" class="question-image-input" value="${questionImage}">
+                
+                <textarea class="solution-input" placeholder="Answer (e.g., The name of the event or item)" style="margin-top:20px;">${answer}</textarea>
+                <div class="image-controls">
+                    <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="triggerImageUpload(this)">Upload Image</button>
+                </div>
+                <div class="answer-image-preview image-preview">${answerImagePreview}</div>
+                <input type="file" class="image-upload-input" accept="image/*" style="display:none;" onchange="handleImageFile(this)">
+                <input type="hidden" class="answer-image-input" value="${answerImage}">
             </div>
-            <div class="question-image-preview image-preview">${questionImagePreview}</div>
-            <input type="file" class="image-upload-input" accept="image/*" style="display:none;" onchange="handleImageFile(this)">
-            <input type="hidden" class="question-image-input" value="${questionImage}">
-            
-            <textarea class="solution-input" placeholder="Answer" style="margin-top:20px;">${answer}</textarea>
-            <div class="image-controls">
-                <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="triggerImageUpload(this)">Upload Image</button>
-            </div>
-            <div class="answer-image-preview image-preview">${answerImagePreview}</div>
-            <input type="file" class="image-upload-input" accept="image/*" style="display:none;" onchange="handleImageFile(this)">
-            <input type="hidden" class="answer-image-input" value="${answerImage}">
-        </div>
-        <button class="remove-card-btn" onclick="editorRemoveCard(${editorCardCounter})"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg></button>
-    `;
-    
-    container.appendChild(newRow);
-    
-    // Re-attach paste listeners to the new textareas
-    newRow.querySelectorAll('textarea').forEach(textarea => {
-        textarea.addEventListener('paste', handleImagePaste);
-    });
+            <button class="remove-card-btn" onclick="editorRemoveCard(${editorCardCounter})"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg></button>
+        `;
+        
+        container.appendChild(newRow);
+        
+        newRow.querySelectorAll('textarea').forEach(textarea => {
+            textarea.addEventListener('paste', handleImagePaste);
+        });
 
-    if (!question && !answer) newRow.querySelector('.question-input').focus();
-}
+        if (!question && !answer) newRow.querySelector('.question-input').focus();
+    }
     
     function triggerImageUpload(button) {
         button.closest('.image-controls').nextElementSibling.nextElementSibling.click();
@@ -2638,37 +2740,55 @@
         const originalText = saveBtn.innerHTML;
         saveBtn.innerHTML = '<span class="spinner" style="border-width:2px; width:16px; height:16px;"></span> Saving...';
         saveBtn.disabled = true;
+
         const name = document.getElementById('deckTitle').value.trim();
         const category = document.getElementById('deckCategory').value;
         const notes = document.getElementById('deckNotes').value.trim();
-        if (!name) { showToast('Please enter a title for your deck.', 'error'); return; }
-        
-        const cards = Array.from(document.querySelectorAll('#editorView .flashcard-item')).map(el => ({
-            id: Date.now() + Math.random(),
-            question: el.querySelector('.question-input').value.trim(),
-            answer: el.querySelector('.solution-input').value.trim(),
-            questionImage: el.querySelector('.question-image-input').value.trim(),
-            answerImage: el.querySelector('.answer-image-input').value.trim(),
-            isNew: true
-        })).filter(c => c.question || c.questionImage);
+        const typeHint = document.getElementById('deckTypeHint').value;
 
-        if (cards.length === 0) { showToast('Please add at least one complete flashcard.', 'error'); return; }
+        if (!name) { 
+            showToast('Please enter a title for your deck.', 'error');
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+            return; 
+        }
         
+        const cards = Array.from(document.querySelectorAll('#editorView .flashcard-item')).map(el => {
+            const orderInput = el.querySelector('.card-order-input');
+            return {
+                id: Date.now() + Math.random(),
+                question: el.querySelector('.question-input').value.trim(),
+                answer: el.querySelector('.solution-input').value.trim(),
+                questionImage: el.querySelector('.question-image-input').value.trim(),
+                answerImage: el.querySelector('.answer-image-input').value.trim(),
+                order: orderInput ? parseInt(orderInput.value) : 0, // Save the order
+                isNew: true
+            };
+        }).filter(c => c.question || c.questionImage);
+
+        if (cards.length === 0) { 
+            showToast('Please add at least one complete flashcard.', 'error');
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+            return; 
+        }
+        
+        const tempDeck = { name, category, cards, notes, typeHint };
+        showToast("Analysing deck content...", "info", 2000);
+        await processDeckContent(tempDeck);
+
         if (currentDeckId) {
             const deck = decks[currentDeckId];
             deck.name = name;
             deck.category = category;
-            deck.cards = cards;
+            deck.cards = tempDeck.cards;
             deck.notes = notes;
-            deck.learnState = {
-                buckets: [[...cards], ...Array.from({length: deck.settings.maxBuckets - 1}, () => [])],
-                currentRound: 1, maxBuckets: deck.settings.maxBuckets
-            };
-            deck.reviewState = { stillLearning: [...cards], correct: [], currentRound: 1, lastRoundIncorrect: [] };
+            deck.typeHint = typeHint;
             await saveDataToDB('decks', deck);
         } else {
-            await createNewDeck(name, category, cards, notes);
+            await createNewDeck(name, category, tempDeck.cards, notes, typeHint);
         }
+        
         document.getElementById('deckTitle').value = '';
         document.getElementById('flashcardsContainer').innerHTML = '';
         backToDashboard();
@@ -2783,8 +2903,14 @@
             currentMode = 'learn';
             currentDeckId = deckId;
             const deck = decks[deckId];
-            deck.settings = {...DEFAULT_DECK_SETTINGS, ...(deck.settings || {})};
+
+            if (deck.cards.length > 0 && typeof deck.cards[0].archetype === 'undefined') {
+                showToast("Performing first-time analysis...", "info", 2000);
+                await processDeckContent(deck);
+                await saveDataToDB('decks', deck); 
+            }
             
+            deck.settings = {...DEFAULT_DECK_SETTINGS, ...(deck.settings || {})};
             studyState.settings = deck.settings;
             studyState.currentRound = 1;
             studyState.startTime = new Date();
@@ -3068,117 +3194,160 @@
             }
         }
 
-            function showNextCard() {
-                if (studyState.currentCardIndex >= studyState.roundCards.length && studyState.incorrectInThisRound.length > 0) {
-                    studyState.roundCards = studyState.roundCards.concat(shuffleArray(studyState.incorrectInThisRound));
-                    studyState.incorrectInThisRound = []; 
-                    showToast("Let's review the ones you missed.", "info");
-                }
-
-                if (studyState.currentCardIndex >= studyState.roundCards.length) {
-                    studyState.currentRound++;
-                    saveStudyProgress();
-                    showProgress();
+        function showNextSequenceCard() {
+            if (studyState.currentCardIndex >= studyState.sequenceCards.length) {
+                if (studyState.sequencePhase === 'Forward Chaining') {
+                    studyState.sequencePhase = 'Full Recall';
+                    studyState.roundCards = [...studyState.sequenceCards]; 
+                    studyState.currentCardIndex = 0;
+                    showToast("Forward Chaining Complete! Now starting Full Recall.", "success", 4000);
+                    showProgress(); 
                     return;
-                }
-                
-                window.scrollTo(0, 0);
-                const card = studyState.roundCards[studyState.currentCardIndex];
-                const flashcardElem = document.querySelector('#cardView .flashcard');
-                flashcardElem.classList.remove('is-flipped');
-                
-                document.getElementById('cardRoundInfo').textContent = `Round ${studyState.currentRound} - Card ${studyState.currentCardIndex + 1} of ${studyState.roundCards.length}`;
-                document.getElementById('cardQuestion').innerHTML = card.question;
-                const questionContent = document.getElementById('cardQuestionContent');
-                const existingQImg = questionContent.querySelector('.card-image');
-                if(existingQImg) existingQImg.remove();
-                if(card.questionImage) questionContent.innerHTML += `<img src="${card.questionImage}" class="card-image" style="margin: 15px auto 0 auto; display: block;">`;
-
-                document.getElementById('cardAnswer').innerHTML = card.answer;
-                const answerContent = document.getElementById('cardAnswerContent');
-                const existingAImg = answerContent.querySelector('#cardAnswer .card-image');
-                if(existingAImg) existingAImg.remove();
-                if(card.answerImage) document.getElementById('cardAnswer').innerHTML += `<img src="${card.answerImage}" class="card-image" style="margin: 15px auto 0 auto; display: block;">`;
-                
-                document.getElementById('cardAnswerContent').classList.add('hidden');
-                document.getElementById('userAnswerDisplay').classList.add('hidden');
-                document.getElementById('writeAnswerInput').classList.remove('correct', 'incorrect');
-                
-                const writeInput = document.getElementById('writeAnswerInput');
-                const accentToggleBtn = document.getElementById('accentToggleBtn');
-                const switchStudyModeBtn = document.getElementById('switchStudyModeBtn');
-                const editStudyCardBtn = document.getElementById('editStudyCardBtn');
-                
-                document.getElementById('simpleAnswerButtons').classList.remove('hidden');
-                document.getElementById('advancedAnswerButtons').classList.add('hidden');
-                document.getElementById('correctBtn').classList.add('hidden');
-                document.getElementById('incorrectBtn').classList.add('hidden');
-                document.getElementById('showQuestionBtn').classList.add('hidden');
-                document.getElementById('checkAnswerBtn').classList.add('hidden');
-                document.getElementById('dontKnowBtn').classList.add('hidden');
-                document.getElementById('showAnswerBtn').classList.add('hidden');
-
-                const isWriteMode = (currentMode === 'learn' && studyState.settings.learnMode === 'write') || (currentMode === 'review' && studyState.settings.reviewMode === 'write');
-
-                if (isWriteMode) {
-                    startInteractionLog(card.id);
-                    document.getElementById('checkAnswerBtn').classList.remove('hidden');
-                    document.getElementById('dontKnowBtn').classList.remove('hidden');
-                    writeInput.value = '';
-                    writeInput.classList.remove('hidden');
-                    writeInput.disabled = false;
-                    setTimeout(() => writeInput.focus(), 100);
-                    accentToggleBtn.classList.remove('hidden');
-                    updateAccentButtonsVisibility();
-                } else { 
-                    document.getElementById('showAnswerBtn').classList.remove('hidden');
-                    writeInput.classList.add('hidden');
-                    accentToggleBtn.classList.add('hidden');
-                    document.getElementById('accentButtonsContainer').classList.add('hidden');
-                }
-
-                switchStudyModeBtn.classList.toggle('hidden', currentMode !== 'learn');
-                editStudyCardBtn.classList.toggle('hidden', !globalSettings.enableInStudyEditing);
-
-                const bucketInfo = document.getElementById('cardBucketInfo');
-                if (currentMode === 'learn' || currentMode === 'spaced') {
-                    const cardKnowledge = studyState.knowledgeStates.get(card.id);
-                    if(cardKnowledge) {
-                        bucketInfo.textContent = `Mastery: ${Math.round(cardKnowledge.masteryScore * 100)}%`;
-                        bucketInfo.style.display = 'block';
-                    } else {
-                        bucketInfo.style.display = 'none';
-                    }
                 } else {
-                    bucketInfo.style.display = 'none';
+                    showComplete();
+                    return; 
                 }
             }
 
+            const card = studyState.roundCards[studyState.currentCardIndex];
+            const questionElement = document.getElementById('cardQuestion');
+
+            if (studyState.sequencePhase === 'Forward Chaining') {
+                if (studyState.currentCardIndex === 0) {
+                    questionElement.innerHTML = `What is the first item in the sequence?`;
+                } else {
+                    const prevItem = studyState.sequenceCards[studyState.currentCardIndex - 1].answer; 
+                    questionElement.innerHTML = `What comes after: <strong>${prevItem}</strong>?`;
+                }
+            } else { 
+                questionElement.innerHTML = `What is item #${studyState.currentCardIndex + 1} in the sequence?`;
+            }
+
+            document.getElementById('flashcardViewContainer').classList.remove('hidden');
+            document.getElementById('mcqView').classList.add('hidden');
+            
+            const simpleButtons = document.getElementById('simpleAnswerButtons');
+            simpleButtons.classList.remove('hidden');
+            simpleButtons.querySelectorAll('button').forEach(btn => btn.classList.add('hidden'));
+
+            document.getElementById('writeAnswerInput').classList.remove('hidden');
+            document.getElementById('checkAnswerBtn').classList.remove('hidden');
+            document.getElementById('dontKnowBtn').classList.remove('hidden');
+            
+            startInteractionLog(card.id);
+
+            const flashcardElem = document.querySelector('#cardView .flashcard');
+            flashcardElem.classList.remove('is-flipped');
+            document.getElementById('cardAnswer').innerHTML = card.answer;
+            document.getElementById('cardAnswerContent').classList.add('hidden');
+            
+            const writeInput = document.getElementById('writeAnswerInput');
+            writeInput.value = '';
+            writeInput.disabled = false;
+            writeInput.classList.remove('correct', 'incorrect');
+            setTimeout(() => writeInput.focus(), 100);
+
+            document.getElementById('cardRoundInfo').textContent = 
+                `${studyState.sequencePhase} - Item ${studyState.currentCardIndex + 1} of ${studyState.sequenceCards.length}`;
+        }
+
+        async function showNextCard() {
+            if (currentMode === 'sequence') {
+                return showNextSequenceCard();
+            }
+
+            if (studyState.currentCardIndex >= studyState.roundCards.length && studyState.incorrectInThisRound.length > 0) {
+                studyState.roundCards = studyState.roundCards.concat(shuffleArray(studyState.incorrectInThisRound));
+                studyState.incorrectInThisRound = [];
+                showToast("Let's review the ones you missed.", "info");
+            }
+
+            if (studyState.currentCardIndex >= studyState.roundCards.length) {
+                studyState.currentRound++;
+                await saveStudyProgress();
+                showProgress();
+                return;
+            }
+
+            window.scrollTo(0, 0);
+            const card = studyState.roundCards[studyState.currentCardIndex];
+            
+            const knowledgeStates = await getAllDataFromDB('userKnowledgeState');
+            studyState.knowledgeStates = new Map(knowledgeStates.map(item => [item.cardID, item]));
+
+            document.getElementById('flashcardViewContainer').classList.add('hidden');
+            document.getElementById('mcqView').classList.add('hidden');
+            document.getElementById('writeAnswerInput').classList.add('hidden');
+            const simpleButtons = document.getElementById('simpleAnswerButtons');
+            simpleButtons.classList.add('hidden');
+            simpleButtons.querySelectorAll('button').forEach(btn => btn.classList.add('hidden'));
+
+            const questionType = selectOptimalQuestionType(card);
+            simpleButtons.classList.remove('hidden');
+
+            switch (questionType) {
+                case 'MultipleChoice':
+                    document.getElementById('mcqView').classList.remove('hidden');
+                    document.getElementById('mcqQuestion').innerHTML = card.question;
+                    generateAndDisplayMCQ(card, decks[currentDeckId].cards);
+                    simpleButtons.classList.add('hidden'); // MCQ has its own buttons
+                    break;
+                
+                case 'Cloze':
+                    document.getElementById('flashcardViewContainer').classList.remove('hidden');
+                    const clozeText = card.question.replace(new RegExp(card.answer, 'ig'), '___________');
+                    document.getElementById('cardQuestion').innerHTML = clozeText;
+                    
+                    document.getElementById('writeAnswerInput').classList.remove('hidden');
+                    document.getElementById('checkAnswerBtn').classList.remove('hidden');
+                    document.getElementById('dontKnowBtn').classList.remove('hidden');
+                    startInteractionLog(card.id);
+                    break;
+
+                case 'Type': 
+                    document.getElementById('flashcardViewContainer').classList.remove('hidden');
+                    document.getElementById('cardQuestion').innerHTML = card.question;
+                    
+                    document.getElementById('writeAnswerInput').classList.remove('hidden');
+                    document.getElementById('checkAnswerBtn').classList.remove('hidden');
+                    document.getElementById('dontKnowBtn').classList.remove('hidden');
+                    startInteractionLog(card.id);
+                    break;
+
+                default: 
+                    document.getElementById('flashcardViewContainer').classList.remove('hidden');
+                    document.getElementById('cardQuestion').innerHTML = card.question;
+                    document.getElementById('showAnswerBtn').classList.remove('hidden');
+                    break;
+            }
+
+            const flashcardElem = document.querySelector('#cardView .flashcard');
+            flashcardElem.classList.remove('is-flipped');
+            document.getElementById('cardAnswer').innerHTML = card.answer;
+            document.getElementById('cardAnswerContent').classList.add('hidden');
+            
+            const writeInput = document.getElementById('writeAnswerInput');
+            writeInput.value = '';
+            writeInput.disabled = false;
+            writeInput.classList.remove('correct', 'incorrect');
+            if(!writeInput.classList.contains('hidden')) setTimeout(() => writeInput.focus(), 100);
+
+            document.getElementById('cardRoundInfo').textContent = `Round ${studyState.currentRound} - Card ${studyState.currentCardIndex + 1} of ${studyState.roundCards.length}`;
+        }
 
         function showAnswer() {
             document.querySelector('#cardView .flashcard').classList.add('is-flipped');
             document.getElementById('cardAnswerContent').classList.remove('hidden');
+            
             document.getElementById('showAnswerBtn').classList.add('hidden');
             document.getElementById('checkAnswerBtn').classList.add('hidden');
             
-            const isAiAutoMarkingActive = studyState.settings.forgivingAutomarking &&
-                                          currentMode === 'learn' &&
-                                          studyState.settings.learnMode === 'write';
-
-            if (!isAiAutoMarkingActive) {
-                if (currentMode === 'spaced' && studyState.settings.feedbackStyle === 'advanced') {
-                    document.getElementById('simpleAnswerButtons').classList.add('hidden');
-                    document.getElementById('advancedAnswerButtons').classList.remove('hidden');
-                } else {
-                    document.getElementById('correctBtn').classList.remove('hidden');
-                    document.getElementById('incorrectBtn').classList.remove('hidden');
-                }
-            }
-            
+            document.getElementById('correctBtn').classList.remove('hidden');
+            document.getElementById('incorrectBtn').classList.remove('hidden');
             document.getElementById('showQuestionBtn').classList.remove('hidden');
         }
         
-            function showQuestion() {
+        function showQuestion() {
             document.querySelector('#cardView .flashcard').classList.remove('is-flipped');
             
             document.getElementById('showQuestionBtn').classList.add('hidden');
@@ -3186,12 +3355,13 @@
             document.getElementById('incorrectBtn').classList.add('hidden');
             document.getElementById('advancedAnswerButtons').classList.add('hidden');
 
-            if (studyState.isRetypingIncorrect) {
+            const isWriteMode = (currentMode === 'learn' && studyState.settings.learnMode === 'write') || (currentMode === 'review' && studyState.settings.reviewMode === 'write');
+
+            if (isWriteMode) {
                 document.getElementById('checkAnswerBtn').classList.remove('hidden');
-                document.getElementById('dontKnowBtn').classList.add('hidden');
+                document.getElementById('dontKnowBtn').classList.toggle('hidden', studyState.isRetypingIncorrect);
             } else {
                 document.getElementById('showAnswerBtn').classList.remove('hidden');
-                document.getElementById('checkAnswerBtn').classList.add('hidden'); 
             }
         }
 
@@ -3203,276 +3373,82 @@
             if (!card || userInput.value.trim() === '') return;
 
             const submissionTime = performance.now();
-            
-            const recallLatency = currentInteractionLog.firstKeyPressTime 
-                ? Math.round(currentInteractionLog.firstKeyPressTime - currentInteractionLog.questionLoadTime) 
-                : null; 
+            const recallLatency = currentInteractionLog.firstKeyPressTime ? Math.round(currentInteractionLog.firstKeyPressTime - currentInteractionLog.questionLoadTime) : null; 
             let answerFluency = 0;
             if (currentInteractionLog.firstKeyPressTime) {
                 const typingDuration = submissionTime - currentInteractionLog.firstKeyPressTime;
                 if (typingDuration > 0) {
                     const charCount = userInput.value.trim().length;
-                    answerFluency = parseFloat((charCount / (charCount / (typingDuration / 1000))).toFixed(2));
+                    answerFluency = parseFloat((charCount / (typingDuration / 1000))).toFixed(2);
                 }
             }
-            
-            let isCorrect;
             const userAnswer = userInput.value.trim();
             const correctAnswer = card.answer.trim();
 
-            const isForgivingMode = studyState.settings.forgivingAutomarking;
-
-            if (isForgivingMode) {
-                const distance = levenshteinDistance(userAnswer, correctAnswer);
-                const maxLength = Math.max(userAnswer.length, correctAnswer.length);
-                const errorRatio = distance / maxLength;
-                
-                if (errorRatio <= 0.15) {
-                    isCorrect = true;
-                    const feedbackEl = document.getElementById('feedbackMessage');
-                    feedbackEl.textContent = `Well done! The correct answer is "${correctAnswer}".`;
-                    feedbackEl.style.color = "var(--primary-color)";
-                    
+            if (studyState.isRetypingIncorrect) {
+                const isCorrectRetype = (userAnswer.toLowerCase() === correctAnswer.toLowerCase());
+                if (isCorrectRetype) {
+                    studyState.isRetypingIncorrect = false;
                     userInput.classList.add('correct');
                     userInput.disabled = true;
-                    
+                    const checkBtn = document.getElementById('checkAnswerBtn');
+                    checkBtn.classList.add('feedback-correct');
                     setTimeout(() => {
-                        feedbackEl.textContent = '';
-                        moveCard(card, true);
-                    }, 2000);
-                    return; 
-                    
-                } else if (errorRatio > 0.15) {
-                    isCorrect = false;
-                    const feedbackEl = document.getElementById('feedbackMessage');
-                    feedbackEl.textContent = `Not quite. The correct answer is "${correctAnswer}". Please type it to continue.`;
-                    feedbackEl.style.color = "var(--danger-color)";
-
-                    showAnswer
-                    
-                    studyState.isRetypingIncorrect = true;
-                    userInput.value = '';
-                    userInput.classList.remove('incorrect');
-                    userInput.disabled = false;
-                    userInput.focus();
-                    
-                    setTimeout(() => feedbackEl.textContent = '', 3000);
-                    return;
-                }
-            } else {
-                let processedUserAnswer = userAnswer;
-                let processedCorrectAnswer = correctAnswer;
-                if (!studyState.settings.caseSensitive) {
-                    processedUserAnswer = processedUserAnswer.toLowerCase();
-                    processedCorrectAnswer = processedCorrectAnswer.toLowerCase();
-                }
-                if (!studyState.settings.punctuation) {
-                    const punc = /[.,/#!$%^&*;:{}=\-_`~()]/g;
-                    processedUserAnswer = processedUserAnswer.replace(punc, "");
-                    processedCorrectAnswer = processedCorrectAnswer.replace(punc, "");
-                }
-                isCorrect = processedUserAnswer === processedCorrectAnswer;
-            }
-
-            if (!studyState.isRetypingIncorrect) {
-                 const finalLog = {
-                    cardID: currentInteractionLog.cardID,
-                    wasCorrect: isCorrect,
-                    recallLatency: recallLatency,
-                    answerFluency: answerFluency,
-                    totalCorrections: currentInteractionLog.backspaceCount + currentInteractionLog.deleteCount,
-                    attemptCount: currentInteractionLog.attemptCount,
-                    userAnswer: userAnswer
-                };
-                logInteraction(finalLog);
-            }
-
-            function autoCheckAnswer() {
-                const userInput = document.getElementById('writeAnswerInput');
-                const card = studyState.roundCards[studyState.currentCardIndex];
-                if (!card || userInput.value.trim() === '') return;
-
-                const submissionTime = performance.now();
-                
-                const recallLatency = currentInteractionLog.firstKeyPressTime 
-                    ? Math.round(currentInteractionLog.firstKeyPressTime - currentInteractionLog.questionLoadTime) 
-                    : null; 
-                let answerFluency = 0;
-                if (currentInteractionLog.firstKeyPressTime) {
-                    const typingDuration = submissionTime - currentInteractionLog.firstKeyPressTime;
-                    if (typingDuration > 0) {
-                        const charCount = userInput.value.trim().length;
-                        answerFluency = parseFloat((charCount / (typingDuration / 1000))).toFixed(2);
-                    }
-                }
-                
-                let isCorrect;
-                const userAnswer = userInput.value.trim();
-                const correctAnswer = card.answer.trim();
-
-                const isForgivingMode = studyState.settings.forgivingAutomarking && currentMode === 'learn' && studyState.settings.learnMode === 'write';
-
-                if (isForgivingMode) {
-                    const distance = levenshteinDistance(userAnswer, correctAnswer);
-                    const maxLength = Math.max(userAnswer.length, correctAnswer.length);
-                    const errorRatio = distance / maxLength;
-                    
-                    if (errorRatio <= 0.15) {
-                        isCorrect = true;
-                        const feedbackEl = document.getElementById('feedbackMessage');
-                        feedbackEl.textContent = `So close! The correct answer is shown above.`;
-                        feedbackEl.style.color = "var(--primary-color)";
-                        userInput.classList.add('correct');
-                        userInput.disabled = true;
-                        showAnswer();
-                        setTimeout(() => {
-                            feedbackEl.textContent = '';
-                            moveCard(card, true);
-                        }, 2500);
-                        return; 
-                        
-                    } else {
-                        isCorrect = false;
-                        const feedbackEl = document.getElementById('feedbackMessage');
-                        feedbackEl.textContent = `Not quite. Please type the answer shown above to continue.`;
-                        feedbackEl.style.color = "var(--danger-color)";
-                        showAnswer();
-                        studyState.isRetypingIncorrect = true;
-                        userInput.value = '';
-                        userInput.classList.remove('incorrect');
-                        userInput.disabled = false;
-                        userInput.focus();
-                        setTimeout(() => feedbackEl.textContent = '', 4000);
-                        return;
-                    }
+                        checkBtn.classList.remove('feedback-correct'); 
+                        moveCard(card, false); 
+                    }, 1200); 
                 } else {
-                    let processedUserAnswer = userAnswer;
-                    let processedCorrectAnswer = correctAnswer;
-                    if (!studyState.settings.caseSensitive) {
-                        processedUserAnswer = processedUserAnswer.toLowerCase();
-                        processedCorrectAnswer = processedCorrectAnswer.toLowerCase();
-                    }
-                    if (!studyState.settings.punctuation) {
-                        const punc = /[.,/#!$%^&*;:{}=\-_`~()]/g;
-                        processedUserAnswer = processedUserAnswer.replace(punc, "");
-                        processedCorrectAnswer = processedCorrectAnswer.replace(punc, "");
-                    }
-                    isCorrect = processedUserAnswer === processedCorrectAnswer;
+                    showToast("That's not quite right. Please type the answer exactly as shown.", "error");
+                    userInput.value = ''; 
+                    userInput.focus();
                 }
-
-                if (!studyState.isRetypingIncorrect) {
-                    const finalLog = {
-                        cardID: currentInteractionLog.cardID,
-                        wasCorrect: isCorrect,
-                        recallLatency: recallLatency,
-                        answerFluency: answerFluency,
-                        totalCorrections: currentInteractionLog.backspaceCount + currentInteractionLog.deleteCount,
-                        attemptCount: currentInteractionLog.attemptCount,
-                        userAnswer: userAnswer
-                    };
-                    logInteraction(finalLog);
-                }
-
-                if (studyState.isRetypingIncorrect) {
-                    if (isCorrect) {
-                        studyState.isRetypingIncorrect = false;
-                        userInput.classList.add('correct');
-                        userInput.disabled = true;
-                        const checkBtn = document.getElementById('checkAnswerBtn');
-                        checkBtn.classList.add('feedback-correct');
-                        setTimeout(() => {
-                            checkBtn.classList.remove('feedback-correct'); 
-                            moveCard(card, false); 
-                        }, 1200); 
-                        return; 
-                    } else {
-                        showToast("That's not quite right. Please type the answer exactly as shown.", "error");
-                        userInput.value = ''; 
-                        userInput.focus();
-                        return; 
-                    }
-                }
-
-                userInput.classList.toggle('correct', isCorrect);
-                userInput.classList.toggle('incorrect', !isCorrect);
-                userInput.disabled = true;
-
-                showAnswer();
-
-                const feedbackEl = document.getElementById('feedbackMessage');
-                if (isCorrect) {
-                    const iqs = calculateIQS({
-                        recallLatency: recallLatency || 2000,
-                        answerFluency: answerFluency || 5,
-                        totalCorrections: currentInteractionLog.backspaceCount + currentInteractionLog.deleteCount,
-                        attemptCount: currentInteractionLog.attemptCount
-                    });
-                    if (iqs > 0.9) {
-                        feedbackEl.textContent = "Perfect!";
-                        feedbackEl.style.color = "var(--success-color)";
-                    } else if (iqs > 0.6) {
-                        feedbackEl.textContent = "Got it.";
-                        feedbackEl.style.color = "var(--text-color)";
-                    } else {
-                        feedbackEl.textContent = "Correct, but let's review this again.";
-                        feedbackEl.style.color = "var(--secondary-text)";
-                    }
-                }
-                
-                setTimeout(() => {
-                    feedbackEl.textContent = '';
-                }, 2000);
+                return;
             }
 
+            let processedUserAnswer = userAnswer;
+            let processedCorrectAnswer = correctAnswer;
+            if (!studyState.settings.caseSensitive) {
+                processedUserAnswer = processedUserAnswer.toLowerCase();
+                processedCorrectAnswer = processedCorrectAnswer.toLowerCase();
+            }
+            if (!studyState.settings.punctuation) {
+                const punc = /[.,/#!$%^&*;:{}=\-_`~()]/g;
+                processedUserAnswer = processedUserAnswer.replace(punc, "");
+                processedCorrectAnswer = processedCorrectAnswer.replace(punc, "");
+            }
+            const isCorrect = processedUserAnswer === processedCorrectAnswer;
+            const questionTypeForLog = document.getElementById('flashcardViewContainer').classList.contains('hidden') ? 'MultipleChoice' : (document.getElementById('cardQuestion').innerHTML.includes('___________') ? 'Cloze' : 'Type');
+
+            logInteraction({ cardID: card.id, wasCorrect: isCorrect, userAnswer, recallLatency, answerFluency, totalCorrections: 0, attemptCount: 1, questionType: questionTypeForLog });
+            
             userInput.classList.toggle('correct', isCorrect);
             userInput.classList.toggle('incorrect', !isCorrect);
             userInput.disabled = true;
 
-            showAnswer();
-
-            if (isForgivingMode) {
-                setTimeout(() => {
-                    if (isCorrect) {
-                        markCorrect(true);
-                    } else {
-                        markIncorrect(true);
-                    }
-                }, 1800);
-            }
-        
-            const feedbackEl = document.getElementById('feedbackMessage');
+            document.querySelector('#cardView .flashcard').classList.add('is-flipped');
+            document.getElementById('cardAnswerContent').classList.remove('hidden');
+            
+            document.getElementById('checkAnswerBtn').classList.add('hidden');
+            document.getElementById('dontKnowBtn').classList.add('hidden');
 
             if (isCorrect) {
-                const totalCorrections = currentInteractionLog.backspaceCount + currentInteractionLog.deleteCount;
-                const attemptCount = currentInteractionLog.attemptCount;
-
-                if (totalCorrections === 0 && attemptCount === 1) {
-                    feedbackEl.textContent = "Perfect!";
-                    feedbackEl.style.color = "var(--success-color)";
-                } else {
-                    const iqs = calculateIQS({
-                        recallLatency: recallLatency || 2000,
-                        answerFluency: answerFluency || 5,
-                        totalCorrections: totalCorrections,
-                        attemptCount: attemptCount
-                    });
-
-                    if (iqs > 0.75) { 
-                        feedbackEl.textContent = "Got it!";
-                        feedbackEl.style.color = "var(--text-color)";
-                    } else {
-                        feedbackEl.textContent = "Correct, but let's review this again.";
-                        feedbackEl.style.color = "var(--secondary-text)";
-                    }
-                }
+                showToast("Correct!", "success");
+                setTimeout(() => moveCard(card, true, questionTypeForLog), 1200);
             } else {
-                feedbackEl.textContent = "Not quite. The correct answer is shown above.";
-                feedbackEl.style.color = "var(--danger-color)";
+                if (studyState.settings.retypeIncorrect) {
+                    studyState.isRetypingIncorrect = true;
+                    userInput.disabled = false;
+                    setTimeout(() => {
+                        userInput.value = '';
+                        userInput.focus();
+                        document.getElementById('checkAnswerBtn').classList.remove('hidden');
+                    }, 1000);
+                    showToast("Not quite. Type the correct answer to continue.", "error", 3000);
+                } else {
+                    showToast("Not quite.", "error");
+                    setTimeout(() => moveCard(card, false, questionTypeForLog), 2000);
+                }
             }
-
-            setTimeout(() => {
-                feedbackEl.textContent = '';
-            }, 2000);
         }
 
         async function updateUserBaseline() {
@@ -3496,29 +3472,55 @@
             console.log("User baseline updated:", globalSettings.userBaseline);
         }
 
-        async function moveCard(card, correct) {
+        async function moveCard(card, correct, questionType = 'Flashcard') {
             const cardInDeck = decks[currentDeckId].cards.find(c => c.id === card.id);
             if(cardInDeck) cardInDeck.isNew = false;
      
-            const lastLog = currentInteractionLog; 
             const userBaseline = globalSettings.userBaseline || { latency: 1500, fluency: 10 };
             const iqs = calculateIQS({
-                recallLatency: lastLog.recallLatency || 2000,
-                answerFluency: lastLog.answerFluency || 5,
-                totalCorrections: lastLog.backspaceCount + lastLog.deleteCount,
-                attemptCount: lastLog.attemptCount || 1
+                recallLatency: currentInteractionLog.recallLatency || 2000,
+                answerFluency: currentInteractionLog.answerFluency || 5,
+                totalCorrections: currentInteractionLog.backspaceCount + currentInteractionLog.deleteCount,
+                attemptCount: currentInteractionLog.attemptCount || 1
             }, userBaseline);
             
-            updateKnowledgeState(card, correct, iqs);
-
+            const difficultyMultipliers = {
+                'MultipleChoice': 0.7,
+                'Cloze': 0.9,
+                'Type': 1.0,
+                'Flashcard': 1.0,
+            }
+            const difficulty = difficultyMultipliers[questionType] || 1.0;
+            
+            updateKnowledgeState(card, correct, iqs, difficulty);
+            
             const sm2 = new SM2Algorithm();
             const quality = correct ? 4 : 1; 
             if(cardInDeck) cardInDeck.sm2Data = sm2.calculateNextReview(cardInDeck)(quality);
             
+            if (currentMode === 'sequence') {
+                if (correct) {
+                    studyState.currentCardIndex++;
+                    if (studyState.sequencePhase === 'Forward Chaining' && studyState.currentCardIndex < studyState.sequenceCards.length) {
+                        studyState.roundCards.push(studyState.sequenceCards[studyState.currentCardIndex]);
+                    }
+                } else {
+                    if (studyState.sequencePhase === 'Forward Chaining') {
+                        studyState.currentCardIndex = 0;
+                        studyState.roundCards = [studyState.sequenceCards[0]]; 
+                        showToast("Sequence broken. Restarting chain.", "error");
+                    } else {
+                        showToast("Not quite. Let's try that one again.", "error");
+                    }
+                }
+                showNextCard(); 
+                return; 
+            }
+
             if (currentMode === 'learn' && !correct) {
                 studyState.incorrectInThisRound.push({ ...card });
             }
-            
+
             if (currentMode === 'review') {
                 if (correct) {
                     const index = studyState.stillLearning.findIndex(c => c.id === card.id);
@@ -3532,10 +3534,12 @@
                     }
                 }
             }
-            await saveDataToDB('decks', decks[currentDeckId]);
+
             studyState.currentCardIndex++;
             showNextCard();
             updateFocusMeter();
+
+            await saveDataToDB('decks', decks[currentDeckId]);
         }
 
         function dontKnowAnswer() {
@@ -3721,10 +3725,6 @@
         async function restartStudy() {
             const deck = decks[currentDeckId];
             if (currentMode === 'learn') {
-                deck.learnState.buckets = [[...deck.cards]];
-                while(deck.learnState.buckets.length < deck.settings.maxBuckets) deck.learnState.buckets.push([]);
-                deck.learnState.currentRound = 1;
-                await saveDataToDB('decks', deck);
                 startLearnMode(currentDeckId);
             } else if (currentMode === 'review') {
                 deck.reviewState = { stillLearning: [...deck.cards], correct: [], currentRound: 1, lastRoundIncorrect: [] };
@@ -3823,15 +3823,20 @@
             const deck = decks[deckId];
             if (!deck) return;
             const settings = {...DEFAULT_DECK_SETTINGS, ...(deck.settings || {})};
+            
             document.getElementById('caseSensitiveToggle').checked = settings.caseSensitive;
             document.getElementById('punctuationToggle').checked = settings.punctuation;
             document.getElementById('retypeIncorrectToggle').checked = settings.retypeIncorrect;
             document.getElementById('reviewOrder').value = settings.reviewOrder;
-            document.getElementById('bucketCount').value = settings.maxBuckets;
             document.querySelector(`input[name="deckSettingsStudyMode"][value="${settings.learnMode}"]`).checked = true;
             document.getElementById('deckSettingsCardsPerRound').value = settings.cardsPerRound;
+            
+            const adaptiveModes = settings.adaptiveModes || { auto: true, mcq: true, cloze: true };
+            document.getElementById('adaptiveAutoToggle').checked = adaptiveModes.auto;
+            document.getElementById('adaptiveMcqToggle').checked = adaptiveModes.mcq;
+            document.getElementById('adaptiveClozeToggle').checked = adaptiveModes.cloze;
+            setupAdaptiveSettings();             
             document.getElementById('deckSettingsModal').classList.add('show');
-            document.getElementById('forgivingAutomarkingToggle').checked = settings.forgivingAutomarking;
             setupRadioCardSelection('deckSettingsStudyMode');
         }
 
@@ -3840,22 +3845,7 @@
         async function saveDeckSettings() {
             const deck = decks[currentViewingDeckId];
             if (!deck) return;
-            const newBucketCount = parseInt(document.getElementById('bucketCount').value);
-
-            if (deck.settings.maxBuckets !== newBucketCount) {
-                showConfirmModal("Changing the number of buckets will reset this deck's learning progress. Are you sure?", async () => {
-                    deck.settings.maxBuckets = newBucketCount;
-                    deck.learnState = {
-                        buckets: [[...deck.cards]],
-                        currentRound: 1, 
-                        maxBuckets: newBucketCount
-                    };
-                    while(deck.learnState.buckets.length < newBucketCount) deck.learnState.buckets.push([]);
-                    await completeSaveDeckSettings(deck);
-                });
-            } else {
-                 await completeSaveDeckSettings(deck);
-            }
+            await completeSaveDeckSettings(deck);
         }
         
         async function completeSaveDeckSettings(deck) {
@@ -3864,24 +3854,34 @@
             deck.settings.retypeIncorrect = document.getElementById('retypeIncorrectToggle').checked;
             deck.settings.reviewOrder = document.getElementById('reviewOrder').value;
             deck.settings.learnMode = document.querySelector('input[name="deckSettingsStudyMode"]:checked').value;
+            deck.settings.adaptiveModes = {
+                auto: document.getElementById('adaptiveAutoToggle').checked,
+                mcq: document.getElementById('adaptiveMcqToggle').checked,
+                cloze: document.getElementById('adaptiveClozeToggle').checked
+            };
             deck.settings.cardsPerRound = document.getElementById('deckSettingsCardsPerRound').value;
-            deck.settings.forgivingAutomarking = document.getElementById('forgivingAutomarkingToggle').checked;
+
             await saveDataToDB('decks', deck);
             updateDashboard();
             closeDeckSettingsModal();
             showToast('Settings saved!');
         }
 
-        function showImportModal() { document.getElementById('importModal').classList.add('show'); }
-        function closeImportModal() { document.getElementById('importModal').classList.remove('show'); }
-        function switchImportTab(tabName) {
-            document.getElementById('importContentPaste').classList.toggle('hidden', tabName !== 'paste');
-            document.getElementById('importContentFile').classList.toggle('hidden', tabName !== 'file');
-            document.getElementById('importTabPaste').classList.toggle('active', tabName === 'paste');
-            document.getElementById('importTabFile').classList.toggle('active', tabName === 'file');
+        function showImportModal() {
+            const dropdown = document.getElementById('importDeckCategory');
+            dropdown.innerHTML = '';
+            categories.forEach(cat => dropdown.innerHTML += `<option value="${cat}">${cat}</option>`);
+            dropdown.innerHTML += `<option value="add_new_category" style="font-style: italic;">+ Add New Category...</option>`;
+            dropdown.onchange = handleCategoryChange; 
+
+            document.getElementById('importModal').classList.add('show');
         }
-        function importData() {
+
+        async function importData() {
             const name = document.getElementById('importDeckName').value.trim();
+            const category = document.getElementById('importDeckCategory').value; 
+            const typeHint = document.getElementById('importDeckTypeHint').value; 
+
             if(!name) { showToast('Please provide a name for the new deck.', 'error'); return; }
 
             const fileInput = document.getElementById('importFileInput');
@@ -3893,38 +3893,44 @@
                 reader.onload = async function(e) {
                     try {
                         if (file.name.endsWith('.json')) {
-                            const importedDeck = JSON.parse(e.target.result);
-                            if (!importedDeck.name || !Array.isArray(importedDeck.cards)) throw new Error('Invalid JSON format.');
+                            const importedData = JSON.parse(e.target.result);
                             
-                            const deckId = Date.now().toString();
-                            const newDeck = { ...importedDeck, id: deckId, name: name, created: new Date().toISOString() };
-                            
-                            const oldIdToNewCardMap = new Map();
-                            newDeck.cards = newDeck.cards.map(oldCard => {
-                                const newCard = { ...oldCard, id: Date.now() + Math.random() };
-                                oldIdToNewCardMap.set(oldCard.id, newCard);
-                                return newCard;
-                            });
+                            if (importedData.deck && importedData.knowledgeStateData) {
+                                const deckData = importedData.deck;
+                                const knowledgeData = importedData.knowledgeStateData;
 
-                            if (newDeck.learnState && newDeck.learnState.buckets) {
-                                newDeck.learnState.buckets = newDeck.learnState.buckets.map(bucket => 
-                                    bucket.map(c => oldIdToNewCardMap.get(c.id)).filter(Boolean)
-                                );
-                            }
-                            if (newDeck.reviewState) {
-                                if (newDeck.reviewState.stillLearning) newDeck.reviewState.stillLearning = newDeck.reviewState.stillLearning.map(c => oldIdToNewCardMap.get(c.id)).filter(Boolean);
-                                if (newDeck.reviewState.correct) newDeck.reviewState.correct = newDeck.reviewState.correct.map(c => oldIdToNewCardMap.get(c.id)).filter(Boolean);
-                                if (newDeck.reviewState.lastRoundIncorrect) newDeck.reviewState.lastRoundIncorrect = newDeck.reviewState.lastRoundIncorrect.map(c => oldIdToNewCardMap.get(c.id)).filter(Boolean);
-                            }
+                                const oldIdToNewIdMap = new Map();
+                                deckData.cards.forEach(card => {
+                                    const oldId = card.id;
+                                    const newId = Date.now() + Math.random();
+                                    card.id = newId;
+                                    oldIdToNewIdMap.set(oldId, newId);
+                                });
 
-                            decks[deckId] = newDeck;
-                            await saveDataToDB('decks', newDeck);
-                            showToast(`Deck "${name}" imported successfully with ${newDeck.cards.length} cards!`);
+                                const newDeckId = await createNewDeck(name, category, deckData.cards, deckData.notes || '', typeHint);
+
+                                const transaction = db.transaction(['userKnowledgeState'], 'readwrite');
+                                const store = transaction.objectStore('userKnowledgeState');
+                                knowledgeData.forEach(state => {
+                                    const newCardId = oldIdToNewIdMap.get(state.cardID);
+                                    if (newCardId) {
+                                        state.cardID = newCardId;
+                                        store.put(state);
+                                    }
+                                });
+                                
+                                showToast(`Deck "${name}" and its learning progress restored!`, 'success');
+
+                            } else {
+                                if (!importedData.name || !Array.isArray(importedData.cards)) throw new Error('Invalid JSON format.');
+                                await createNewDeck(name, category, importedData.cards, importedData.notes || '', typeHint);
+                                showToast(`Deck "${name}" imported successfully with ${importedData.cards.length} cards!`);
+                            }
 
                         } else if (file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
                             const cards = parseTextData(e.target.result, file.name.endsWith('.csv') ? ',' : '\t');
                              if (cards.length > 0) {
-                                await createNewDeck(name, 'Other', cards);
+                                await createNewDeck(name, category, cards, '', typeHint);
                                 showToast(`Deck "${name}" imported successfully with ${cards.length} cards!`);
                             } else { throw new Error('No valid cards found in file.'); }
                         }
@@ -3937,7 +3943,7 @@
                  try {
                     const cards = parseTextData(pastedText.trim(), '\t');
                     if (cards.length > 0) {
-                        createNewDeck(name, 'Other', cards);
+                        await createNewDeck(name, category, cards, '', typeHint);
                         showToast(`Deck "${name}" created successfully with ${cards.length} cards!`);
                         closeImportModal();
                         updateDashboard();
@@ -3947,6 +3953,14 @@
                 showToast('Please select a file or paste text to import.', 'error');
             }
         }
+        function closeImportModal() { document.getElementById('importModal').classList.remove('show'); }
+        function switchImportTab(tabName) {
+            document.getElementById('importContentPaste').classList.toggle('hidden', tabName !== 'paste');
+            document.getElementById('importContentFile').classList.toggle('hidden', tabName !== 'file');
+            document.getElementById('importTabPaste').classList.toggle('active', tabName === 'paste');
+            document.getElementById('importTabFile').classList.toggle('active', tabName === 'file');
+        }
+
         function parseTextData(text, separator) {
             return text.split('\n').map(line => {
                 const parts = line.split(separator);
@@ -4466,7 +4480,7 @@
             };
         }
 
-        async function updateKnowledgeState(card, wasCorrect, iqs = 0.5) {
+        async function updateKnowledgeState(card, wasCorrect, iqs = 0.5, difficulty = 1.0) {
             if (!db) return;
 
             const transaction = db.transaction(['userKnowledgeState'], 'readwrite');
@@ -4495,7 +4509,8 @@
                     performanceWeight = 0.1;
                 }
                 
-                const performance = wasCorrect ? (0.5 + (iqs * 0.5)) : 0; 
+                const raw_performance = wasCorrect ? (0.5 + (iqs * 0.5)) : 0; 
+                const performance = raw_performance * difficulty;
                 const newMastery = (oldMastery * (1 - performanceWeight)) + (performance * performanceWeight);
 
                 let newStability;
@@ -4562,6 +4577,252 @@
             }
         }
 
+        function determineCardArchetype(card, deckTypeHint = 'General') {
+            if (deckTypeHint === 'Sequence') return 'SequenceItem';
+
+            const q = card.question.trim();
+            const a = card.answer.trim();
+
+            if (q.split(' ').length <= 3 && a.split(' ').length > 3) {
+                return 'Vocabulary';
+            }
+            if (q.endsWith('?')) {
+                return 'Q&A';
+            }
+            if (a.split(' ').length <= 3 && q.split(' ').length > 3) {
+                return 'Definition';
+            }
+            if (q.includes('...') || q.includes('___')) {
+                return 'Cloze';
+            }
+            
+            return 'General';
+        }
+
+        let nlp_pipeline = null;
+        async function processDeckContent(deck) {
+            const concepts = {};
+            let conceptCounter = 0;
+
+            for (const card of deck.cards) {
+                card.archetype = determineCardArchetype(card, deck.typeHint || 'General');
+
+                const firstWord = card.question.split(' ')[0].toLowerCase();
+                if (!concepts[firstWord]) {
+                    concepts[firstWord] = `c${conceptCounter++}`;
+                }
+                card.conceptID = concepts[firstWord];
+            }
+            deck.analysisVersion = CURRENT_ANALYSIS_VERSION;
+            console.log("Deck content processed:", deck);
+        }
+
+        async function startSequenceSession(deckId) {
+            currentMode = 'sequence';
+            currentDeckId = deckId;
+            const deck = decks[deckId];
+            
+            const sequenceCards = [...deck.cards].sort((a, b) => a.order - b.order);
+
+            if (sequenceCards.length < 2) {
+                showToast("A sequence requires at least 2 cards.", "error");
+                return;
+            }
+
+            studyState.settings = deck.settings;
+            studyState.sequenceCards = sequenceCards;
+            studyState.sequencePhase = 'Forward Chaining';
+            
+            studyState.roundCards = [sequenceCards[0]]; 
+            
+            studyState.currentCardIndex = 0;
+            studyState.currentRound = 1;
+            studyState.startTime = new Date();
+
+            showView('studyMode');
+            document.getElementById('studyTitle').textContent = 'Sequence Learner';
+            document.getElementById('studySubtitle').textContent = deck.name;
+            document.getElementById('progressView').classList.add('hidden'); 
+            
+            transitionSubView(null, document.getElementById('cardView'));
+            showNextCard();
+        }
+
+        function selectOptimalQuestionType(card) {
+            const settings = studyState.settings.adaptiveModes || { auto: true, mcq: true, cloze: true };
+            const mastery = studyState.knowledgeStates.get(card.id)?.masteryScore || 0.5;
+            const allCardsInDeck = decks[currentDeckId].cards;
+
+            if (!settings.auto) {
+                if (settings.cloze && canGenerateQuestionType('Cloze', card, allCardsInDeck)) return 'Cloze';
+                if (settings.mcq && canGenerateQuestionType('MultipleChoice', card, allCardsInDeck)) return 'MultipleChoice';
+                return studyState.settings.learnMode === 'write' ? 'Type' : 'Flashcard';
+            }
+
+            if (mastery < 0.6) {
+                if (canGenerateQuestionType('MultipleChoice', card, allCardsInDeck)) {
+                    return 'MultipleChoice';
+                }
+            }
+
+            if (mastery < 0.85) {
+                if (canGenerateQuestionType('Cloze', card, allCardsInDeck)) {
+                    return 'Cloze';
+                }
+            }
+
+            if (canGenerateQuestionType('Type', card, allCardsInDeck)) {
+                return 'Type';
+            }
+
+            return 'Flashcard';
+        }
+
+        async function generateAndDisplayMCQ(correctCard, allCardsInDeck) {
+            const optionsContainer = document.getElementById('mcqOptions');
+            optionsContainer.innerHTML = '<div class="spinner" style="margin: 0 auto;"></div><p style="text-align: center; color: var(--secondary-text); font-size: 0.9rem; margin-top: 10px;">Generating smart options...</p>';
+
+            try {
+                const distractors = await window.electronAPI.generateDistractors({
+                    question: correctCard.question,
+                    answer: correctCard.answer
+                });
+
+                if (!distractors || distractors.length < 3) {
+                    throw new Error("API did not return enough distractors.");
+                }
+
+                const finalOptions = shuffleArray([correctCard.answer, ...distractors.slice(0, 3)]);
+                displayMCQButtons(finalOptions, correctCard);
+
+            } catch (error) {
+                console.error("Gemini API failed, falling back to random distractors.", error);
+                
+                showToast("Couldn't generate smart options, using random.", "error");
+                const options = new Set([correctCard.answer]);
+                const randomFill = shuffleArray(allCardsInDeck.filter(card => card.id !== correctCard.id));
+                for (const randomCard of randomFill) {
+                    if (options.size < 4) options.add(randomCard.answer);
+                    else break;
+                }
+                const finalOptions = shuffleArray(Array.from(options));
+                displayMCQButtons(finalOptions, correctCard);
+            }
+        }
+
+        function displayMCQButtons(options, correctCard) {
+            const optionsContainer = document.getElementById('mcqOptions');
+            optionsContainer.innerHTML = ''; 
+
+            options.forEach(optionText => {
+                const button = document.createElement('button');
+                button.className = 'btn btn-secondary';
+                button.textContent = optionText;
+                button.onclick = () => {
+                    optionsContainer.querySelectorAll('button').forEach(btn => btn.disabled = true);
+                    
+                    const isCorrect = (optionText === correctCard.answer);
+                    
+                    button.classList.remove('btn-secondary');
+                    button.classList.add(isCorrect ? 'btn-success' : 'btn-danger');
+
+                    if (!isCorrect) {
+                        optionsContainer.querySelectorAll('button').forEach(btn => {
+                            if (btn.textContent === correctCard.answer) {
+                                btn.classList.remove('btn-secondary');
+                                btn.classList.add('btn-success');
+                            }
+                        });
+                    }
+                    
+                    logInteraction({ cardID: correctCard.id, wasCorrect: isCorrect, userAnswer: optionText, questionType: 'MultipleChoice', recallLatency: null, answerFluency: 0, totalCorrections: 0, attemptCount: 1 });
+                    setTimeout(() => moveCard(correctCard, isCorrect, 'MultipleChoice'), 1500);
+                };
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function setupAdaptiveSettings() {
+            const autoToggle = document.getElementById('adaptiveAutoToggle');
+            const mcqToggle = document.getElementById('adaptiveMcqToggle');
+            const clozeToggle = document.getElementById('adaptiveClozeToggle');
+
+            function handleAutoToggle() {
+                const isAuto = autoToggle.checked;
+                mcqToggle.disabled = isAuto;
+                clozeToggle.disabled = isAuto;
+                if (isAuto) {
+                    mcqToggle.checked = true;
+                    clozeToggle.checked = true;
+                }
+            }
+            autoToggle.onchange = handleAutoToggle;
+            handleAutoToggle(); 
+        }
+        function canGenerateQuestionType(type, card, allCardsInDeck) {
+            switch (type) {
+                case 'MultipleChoice':
+                    return allCardsInDeck.length >= 4;
+                case 'Cloze':
+                    return card.question.toLowerCase().includes(card.answer.toLowerCase());
+                case 'Type':
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        async function checkForOutdatedAnalysis() {
+            let decksToUpdate = [];
+            for (const deckId in decks) {
+                const deck = decks[deckId];
+                if (!deck.analysisVersion || deck.analysisVersion < CURRENT_ANALYSIS_VERSION) {
+                    decksToUpdate.push(deck);
+                }
+            }
+
+            if (decksToUpdate.length > 0) {
+                showToast(`Upgrading ${decksToUpdate.length} deck(s) with new intelligence features...`, "info", 3000);
+                for (const deck of decksToUpdate) {
+                    await processDeckContent(deck);
+                    await saveDataToDB('decks', deck);
+                }
+                showToast("Deck upgrades complete!", "success");
+                await updateDashboard(); 
+            }
+        }
+
+        function calculateCosineSimilarity(vecA, vecB) {
+            let dotProduct = 0;
+            let magnitudeA = 0;
+            let magnitudeB = 0;
+            for (let i = 0; i < vecA.length; i++) {
+                dotProduct += vecA[i] * vecB[i];
+                magnitudeA += vecA[i] * vecA[i];
+                magnitudeB += vecB[i] * vecB[i];
+            }
+            magnitudeA = Math.sqrt(magnitudeA);
+            magnitudeB = Math.sqrt(magnitudeB);
+            if (magnitudeA && magnitudeB) {
+                return dotProduct / (magnitudeA * magnitudeB);
+            } else {
+                return 0;
+            }
+        }
+
+        class NlpPipeline {
+            static task = 'feature-extraction';
+            static model = 'Xenova/all-MiniLM-L6-v2';
+            static instance = null;
+
+            static async getInstance(progress_callback = null) {
+                if (this.instance === null) {
+                    const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1');
+                    this.instance = pipeline(this.task, this.model, { progress_callback });
+                }
+                return this.instance;
+            }
+        }
     </script>
 </body>
 </html>
