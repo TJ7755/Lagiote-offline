@@ -3,8 +3,8 @@
 // Modules to control application life and create native browser window
 const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
-const GEMINI_API_KEY = 'AIzaSyAYyGV855YTvQzWRM5oMAXVkNrXLLjIqug';
-
+require('dotenv').config();
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 if (require('electron-squirrel-startup')) {
   app.quit();
 }
