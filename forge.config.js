@@ -6,13 +6,16 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 module.exports = {
   packagerConfig: {
     asar: true,
-    icon: './logo/logo',
+    icon: './assets/dmg-background.png',
   },
   rebuildConfig: {},
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
-      config: {},
+      config: {
+        setupIcon: './assets/logo/icon.ico',
+        loadingGif: './assets/dmg-background.gif', 
+      },
     },
     {
       name: '@electron-forge/maker-dmg',

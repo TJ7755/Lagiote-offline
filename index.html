@@ -11,10 +11,12 @@
     <script src="./assets/js/pdf.min.js"></script>
     <script src="./assets/js/mammoth.browser.min.js"></script>
     <script src="./assets/js/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1"></script>
     <link href="./assets/css/style.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="https://i.ibb.co/1fyDzymL/Study-Stack-Pro-Photoroom.png">
     <style>
+        
         .stats-table {
             width: 100%;
             border-collapse: collapse;
@@ -46,7 +48,11 @@
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-color); min-height: 100vh; color: var(--text-color); transition: background-color 0.3s, color 0.3s; }
-        .view-container { display: none; }
+        .view-container { 
+            display: none; 
+            position: relative; 
+            z-index: 1;
+        }
         .view-container.animating { animation-duration: 0.4s; animation-timing-function: ease-in-out; animation-fill-mode: forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
@@ -341,22 +347,21 @@
         .form-group { flex: 1; }
         .form-group.full-width { flex: 1 1 100%; }
         .form-group label { font-size: 16px; }
-        .form-group input, .form-group textarea { padding: 15px 20px !important; border-radius: 10px !important; font-size: 16px !important; margin-bottom: 10px; min-height: 80px; resize: vertical; font-family: 'Inter', sans-serif; }
+        .form-group input, .form-group textarea { padding: 15px 15px !important; border-radius: 10px !important; font-size: 16px !important; margin-bottom: 10px; resize: vertical; font-family: 'Inter', sans-serif; font-weight: bold;}
         .flashcard-editor-row {
             display: flex;
-            align-items: center; /* Vertically align the button with the card */
-            gap: 15px; /* Creates space between the card and the button */
-            margin-bottom: 25px; /* Space between each card row */
+            align-items: center; 
+            gap: 15px; 
+            margin-bottom: 25px; 
         }
 
-        /* Add this to style the main card content area */
         .flashcard-item {
-            flex-grow: 1; /* Allows the card to take up all available horizontal space */
+            flex-grow: 1; 
             padding: 25px;
             border: 2px solid var(--border-color);
             border-radius: 15px;
             background-color: var(--input-bg);
-            position: relative; /* This keeps the card number positioned correctly */
+            position: relative; 
         }
         .image-preview { min-height: 20px; margin-bottom: 10px; }
         .image-preview img { max-width: 150px; max-height: 150px; border-radius: 8px; margin-top: 10px; display: block; }
@@ -469,10 +474,47 @@
             color: var(--text-color);
             cursor: pointer;
         }
+        .drag-item { cursor: grab; background-color: var(--input-bg); margin-bottom: 10px; }
+        .drag-item:active { cursor: grabbing; }
+        .drag-ghost { opacity: 0.5; background: var(--primary-color); }
+        .drag-chosen { background: #ebf4ff; }
+        .dark-mode .drag-chosen { background: #5a67d830; }
+        #dynamicToast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px) scale(0.9); 
+            z-index: 2000;
+            
+            background-color: var(--header-bg);
+            color: var(--text-color);
+            padding: 12px 20px;
+            border-radius: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            font-size: 15px;
+            font-weight: 500;
+            
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            opacity: 0;
+            pointer-events: none; 
+        }
+        #dynamicToast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+            pointer-events: auto; 
+        }
+        #dynamicToast.success { background-color: var(--success-color); color: white; }
+        #dynamicToast.error { background-color: var(--danger-color); color: white; }
+        #dynamicToast.info { background-color: var(--primary-color); color: white; }
+        #aiTabCustomise { color: white;}
     </style>
 </head>
 <body>
-    <div id="toast-container"></div>
+    <div id="dynamicToast" class="toast"></div>
 
     <header class="app-header">
          <div class="logo-section">
@@ -484,7 +526,11 @@
             </div>
             <div class="welcome-text">
                 <h1 id="welcomeMessage">Lagiote Revise</h1>
-                <span style="font-size: 0.8rem; color: var(--secondary-text); align-self: flex-end; padding-bottom: 5px;">v1.06</span>
+                <span style="font-size: 0.8rem; color: var(--secondary-text); align-self: flex-end; padding-bottom: 5px;">v1.10</span>
+                <div id="onlineStatusIndicator" style="display: flex; align-items: center; gap: 6px; align-self: flex-end; padding-bottom: 5px; margin-left: 15px;">
+                    <div id="onlineStatusDot" style="width: 10px; height: 10px; border-radius: 50%;"></div>
+                    <span id="onlineStatusText" style="font-size: 0.8rem; font-weight: 500;"></span>
+                </div>
             </div>
         </div>
         <div class="header-actions">
@@ -492,12 +538,17 @@
                 <span class="search-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg></span>
                 <input type="text" class="search-input" placeholder="Search decks..." id="searchInput">
             </div>
+            <button id="headerHomeBtn" class="header-btn hidden" title="Go to Dashboard" onclick="backToDashboard(true)">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955a1.5 1.5 0 012.122 0l8.954 8.955M3 10.5v9A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75v-9" />
+                </svg>
+            </button>
             <button id="headerSettingsBtn" class="header-btn header-settings-btn" title="Settings" onclick="showSettings()">
                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.39.44 1.02.12 1.45l-.527.737c-.25.35-.272.806-.108 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.11v1.093c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.108 1.204l.527.738c.32.43.27.96-.12 1.45l-.773.773a1.125 1.125 0 0 1-1.45.12l-.737-.527c-.35-.25-.806-.272-1.204-.108-.397.165-.71.505-.78.93l-.15.893c-.09.543-.56.94-1.11.94h-1.093c-.55 0-1.02-.398-1.11-.94l-.149-.894c-.07-.424-.384-.764-.78-.93-.398-.164-.855-.142-1.205.108l-.737.527a1.125 1.125 0 0 1-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.11v-1.093c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.527-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.806.272 1.204.108.397-.165.71.505.78-.93l.15-.893Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
             </button>
         </div>
     </header>
-
+    
     <div id="dashboard" class="container view-container">
         <div class="main-content">
             <div id="decksSection">
@@ -535,16 +586,49 @@
                          <span class="create-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" /></svg></span>
                          <div class="create-title">Import Deck</div>
                          <div class="create-desc">Import from JSON, CSV, or pasted text</div>
-                     </div>
+                    </div>
+                    <div class="create-card" onclick="showAiGenerator()">
+                        <span class="create-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" /></svg></span>
+                        <div class="create-title">Create with AI</div>
+                        <div class="create-desc">Generate a deck from a topic or text</div>
+                    </div>
                 </div>
             </div>
              <div class="dashboard-footer">
+                <button class="btn btn-secondary" onclick="showInsightsView()">Memory Insights</button>
                 <button class="btn btn-secondary" onclick="showAnalyticsModal()">Show Analytics</button>
-                <button class="btn btn-secondary" onclick="showInternalAnalytics()" style="margin-left: 10px;">Internal Dashboard</button>
+                <button id="internalDashboardBtn" class="btn btn-secondary" onclick="showInternalAnalytics()" style="margin-left: 10px;">Internal Dashboard</button>
             </div>
         </div>
     </div> 
-
+<div id="insightsView" class="container view-container">
+    <div class="section-title" style="padding-top: 20px;">Memory Insights</div>
+    <div class="settings-container">
+        <div class="form-group">
+            <label for="insightsDeckSelect">Select a deck to analyze</label>
+            <select id="insightsDeckSelect"></select>
+        </div>
+        <div id="insightsContent" class="hidden" style="margin-top: 30px;">
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
+                <div>
+                    <h4>Mastery Breakdown</h4>
+                    <canvas id="masteryBreakdownChart" style="margin-top: 15px;"></canvas>
+                    <div id="masteryLegend" style="margin-top: 15px; font-size: 0.9rem;"></div>
+                </div>
+                <div>
+                    <h4>Predicted Forgetting Curve</h4>
+                    <canvas id="forgettingCurveChart" style="margin-top: 15px;"></canvas>
+                    <p id="cardDetailForCurve" style="text-align: center; margin-top: 10px; color: var(--secondary-text);">Select a card from the list to see its curve.</p>
+                </div>
+            </div>
+            <h4 style="margin-top: 40px;">Card-Specific Data</h4>
+            <div class="deck-cards-list" id="insightsCardList" style="margin-top: 15px;"></div>
+        </div>
+        <div id="insightsPlaceholder">
+            <p style="text-align: center; color: var(--secondary-text); padding: 40px 0;">Please select a deck to view its memory insights.</p>
+        </div>
+    </div>
+</div>
 <div id="internalAnalyticsView" class="container view-container">
 <div class="section-title" style="padding-top: 20px;">Internal Analytics Dashboard</div>
 <div class="settings-container">
@@ -564,7 +648,6 @@
             <p>Please select a card to see a breakdown of common incorrect answers.</p>
         </div>
     </div>
-
 
     <div class="settings-section">
         <h2>Interaction Metrics Distributions</h2>
@@ -650,7 +733,7 @@
                     </div>
                 </div>
                 <div class="processing-controls">
-                    <h3 id="doc-count-title">Process All (0 documents)</h3>
+                    <h3 id="doc-count-title">Process All</h3>
                     <div id="processing-status" class="hidden" style="margin-bottom: 15px;">
                         <div style="margin-bottom: 5px; font-size: 0.9rem; color: var(--secondary-text);">Processing <span id="progress-current">0</span> of <span id="progress-total">0</span>...</div>
                         <div class="progress-bar-container"><div class="progress-fill" id="progress-bar" style="width: 0%;"></div></div>
@@ -685,7 +768,7 @@
             </div>
         </div>
     </div>
-    
+
     <div id="editorView" class="container view-container">
         <div class="editor-container" style="margin-top:20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid var(--border-color);">
@@ -755,6 +838,10 @@
             <div class="checkbox-group">
                 <input type="checkbox" id="enableInStudyEditing">
                 <label for="enableInStudyEditing">Enable card editing during study sessions</label>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="enableToastsToggle">
+                <label for="enableToastsToggle">Enable motivational messages</label>
             </div>
              <!--<div class="form-group">
                  <label for="newCardsPerDay">New Cards Per Day (Spaced Learning)</label>
@@ -858,8 +945,27 @@
             </div>
         </div>
         <div id="cardView" class="hidden sub-view">
-            <div class="round-info" id="cardRoundInfo">Round 1 - Card 1 of 5</div>
+            <div id="passiveReviewView" class="hidden" style="width: 100%;">
+                <div class="flashcard-front" style="text-align: left;">
+                    <h3 style="text-align: center; margin-bottom: 20px;">Let's learn these:</h3>
+                    <ol id="passiveReviewList" style="padding-left: 40px; font-size: 1.2rem; line-height: 1.8;"></ol>
+                </div>
+                <div class="answer-buttons">
+                    <button class="btn btn-success" onclick="moveToNextSequencePhase()">Got it, Start Practice</button>
+                </div>
+            </div>
 
+            <div id="dragDropView" class="hidden" style="width: 100%;">
+                <div class="flashcard-front">
+                    <h3 style="margin-bottom: 20px;">Put these items in the correct order:</h3>
+                    <div id="dragDropList" class="deck-cards-list" style="max-height: none; border-style: dashed;">
+                    </div>
+                </div>
+                <div class="answer-buttons">
+                    <button id="checkDragDropBtn" class="btn btn-show" onclick="checkDragDropOrder()">Check Order</button>
+                </div>
+            </div>
+            <div class="round-info" id="cardRoundInfo">Round 1 - Card 1 of 5</div>
             <div id="flashcardViewContainer">
                 <div class="flashcard">
                     <div class="flashcard-inner">
@@ -916,6 +1022,18 @@
                     <button class="btn" onclick="restartStudy()">Study Again</button>
                     <button class="btn btn-secondary" onclick="endSession()" style="margin-left: 10px;">End Session</button>
                 </div>
+            </div>
+        </div>
+        <div id="preGenerationView" class="hidden sub-view">
+            <div class="progress-dashboard" style="text-align: center;">
+                <div class="progress-title">Preparing Smart Questions...</div>
+                <div class="spinner" style="width: 40px; height: 40px; border-width: 4px; margin: 20px auto;"></div>
+                <p style="color: var(--secondary-text); margin-bottom: 25px;">This may take a moment. Our AI is generating some questions for you...</p>
+                
+                <div class="progress-bar-container" style="max-width: 300px; margin: 0 auto;">
+                    <div class="progress-fill" id="preGenerationProgress" style="width: 0%;"></div>
+                </div>
+                <p id="preGenerationProgressText" style="margin-top: 10px; font-weight: 500; color: var(--secondary-text);">0 / 0</p>
             </div>
         </div>
     </div>
@@ -1307,6 +1425,11 @@
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
     
+    let toastQueue = [];
+    let isToastVisible = false;
+    let sortableInstance = null; 
+    let documentsForAi = [];
+    let isOnline = navigator.onLine;
     let db;
     let decks = {};
     let categories = ["Science", "Maths", "Language",];
@@ -1339,11 +1462,72 @@
         knowledgeStates: new Map(),
         incorrectInThisRound: [],
         incorrectInThisRound: [],
-        sequencePhase: 'Forward Chaining', // Can be 'Forward Chaining' or 'Full Recall'
-        sequenceCards: []
+        sequencePhase: 'Forward Chaining', 
+        sequenceCards: [],      
+        sequenceChunks: [],     
+        currentChunkIndex: 0,  
+        sequencePhase: null,
+        preGeneratedDistractors: new Map()
     };
     const DEFAULT_DECK_SETTINGS = { learnMode: 'flashcard', reviewOrder: 'random', cardsPerRound: 10, maxBuckets: 4, caseSensitive: false, punctuation: false, retypeIncorrect: true, feedbackStyle: 'simple', forgivingAutomarking: true };
     const CURRENT_ANALYSIS_VERSION = 2; 
+    const smartCoachMessages = {
+        greetings: [
+            "Welcome back, {username}! Ready to learn something new today?",
+            "Glad to see you again, {username}! Let's build that knowledge.",
+            "Let's get started, {username}! Consistency is key.",
+            "A new day, a new opportunity to learn. Let's do this, {username}!"
+        ],
+        sessionFeedback: {
+            highAccuracy: [
+                "Excellent work! You achieved over 90% accuracy that round. Keep up the great momentum!",
+                "Fantastic session! Your focus is clearly paying off. Well done!",
+                "That was a brilliant round. You've got a strong grasp on this material."
+            ],
+            mediumAccuracy: [
+                "Good session! You're making solid progress. Every review strengthens your memory.",
+                "Nice work. You pushed through and learned a lot. Let's keep building on it.",
+                "Solid effort. The tricky cards are the ones that teach us the most."
+            ],
+            lowAccuracy: [
+                "That was a tough round, but you stuck with it. That's how real learning happens!",
+                "Don't be discouraged. The most challenging sessions often lead to the biggest breakthroughs.",
+                "You've laid the groundwork. The next time you see these cards, they'll be more familiar."
+            ]
+        },
+        roundFeedback: {
+                highFocus: [
+                    "Excellent focus that round. Keep it up!",
+                    "You're on a roll! Let's keep the momentum going.",
+                    "Great work. You're building strong recall."
+                ],
+                mediumFocus: [
+                    "Good progress. Every card is a step forward.",
+                    "Nice work. Let's see what's in the next round.",
+                    "You're doing great. Keep up the consistent effort."
+                ],
+                encouragement: [
+                    "You've got this. The challenging cards are the best for learning.",
+                    "Keep pushing through. This is how strong memories are built.",
+                    "Don't give up. Every review makes the next one easier."
+                ]
+            },
+        milestones: {
+            streak: [
+                "You're on a {streak}-day streak! Amazing consistency, {username}!",
+                "That's a {streak}-day streak! You're building a powerful learning habit."
+            ],
+            deckMastered: [
+                "Incredible! You've mastered every card in the '{deckName}' deck. That's a huge achievement!",
+                "Congratulations! You've officially mastered the '{deckName}' deck. Time to celebrate!"
+            ],
+            cardsMastered: [
+                "Big milestone! You've now mastered over {count} cards in this deck. Your knowledge is growing!",
+                "You just crossed the {count}-card mastery threshold in this deck. Fantastic progress!"
+            ]
+        }
+    };
+
     let editorCardCounter = 0;
     let currentViewingDeckId = null;
     let activeView = 'dashboard';
@@ -1412,6 +1596,7 @@
             loadSavedData();
             setupEventListeners();
             showView('dashboard', true);
+            updateOnlineStatusUI();
         }).catch(error => {
             console.error("Failed to initialize the database:", error);
             showToast("Could not start the application. Database initialization failed.", "error");
@@ -1489,7 +1674,6 @@
 
     let currentInteractionLog = {};
 
-
     function startInteractionLog(cardID) {
         currentInteractionLog = {
             cardID: cardID,
@@ -1559,7 +1743,6 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                // We send the same data structure to the backend
                 body: JSON.stringify({
                     userID: 'default_user',
                     cardID: logData.cardID,
@@ -1571,7 +1754,6 @@
                     attemptCount: logData.attemptCount,
                     userAnswer: logData.userAnswer
                 }),
-                // Use a short timeout to prevent long waits on a slow network
                 signal: AbortSignal.timeout(5000) 
             });
 
@@ -1579,9 +1761,7 @@
                 // The server responded with an error (e.g., 400, 500)
                 console.warn(`Backend logging failed with status: ${response.status}`);
             } else {
-                // Optional: If successful, you could later update the 'synced' flag
-                // in IndexedDB, but that's a more advanced synchronization feature.
-                // For now, just knowing it was sent is enough.
+
             }
         } catch (error) {
             // This block will catch network errors (e.g., user is offline, server is down)
@@ -1597,18 +1777,24 @@
 
         async function showInternalAnalytics() {
             showView('internalAnalyticsView');
-            
+
             try {
                 const [allLogs, allKnowledgeStates] = await Promise.all([
                     getAllDataFromDB('interactionLogs'),
                     getAllDataFromDB('userKnowledgeState')
                 ]);
 
+                // Check if logs exist before proceeding
                 if (!allLogs || allLogs.length === 0) {
                     console.warn("No interaction logs found to generate analytics.");
+                    document.getElementById('latencyHistogram').parentNode.innerHTML = '<p style="text-align: center; color: var(--secondary-text);">No interaction data available yet.</p>';
+                    document.getElementById('fluencyHistogram').parentNode.innerHTML = '<p style="text-align: center; color: var(--secondary-text);">No interaction data available yet.</p>';
+                    document.getElementById('correctionsHistogram').parentNode.innerHTML = '<p style="text-align: center; color: var(--secondary-text);">No interaction data available yet.</p>';
+                    document.getElementById('latencyScatterPlot').parentNode.innerHTML = '<p style="text-align: center; color: var(--secondary-text);">No interaction data available yet.</p>';
+                    document.getElementById('deckStatisticsResult').innerHTML = '<p>No interaction data available yet.</p>';
                     return;
                 }
-                
+
                 renderHistograms(allLogs);
                 renderLatencyScatterPlot(allLogs);
                 renderInteractionsTimeSeries(allLogs);
@@ -1617,10 +1803,13 @@
 
             } catch (error) {
                 console.error("Failed to fetch data for analytics:", error);
+                // Optionally display a more user-friendly error message
+                showToast("Error loading analytics data. Please try again later.", "error");
             }
         }
 
         function generateDeckStatistics(deckId, allLogs, allKnowledgeStates) {
+            console.log('[Test 1] Raw data from DB:', allKnowledgeStates);
             const resultContainer = document.getElementById('deckStatisticsResult');
             const selectedDeck = decks[deckId];
 
@@ -1629,15 +1818,16 @@
                 return;
             }
 
-            const knowledgeMap = new Map(allKnowledgeStates.map(item => [item.cardID, item]));
+            const knowledgeMap = new Map(allKnowledgeStates.map(item => [String(item.cardID), item]));
+            
             const isSequence = selectedDeck.typeHint === 'Sequence';
 
             const cardStats = selectedDeck.cards.map(card => {
-                const logsForCard = allLogs.filter(log => log.cardID === card.id);
-                const knowledgeState = knowledgeMap.get(card.id);
-
-                const totalInteractions = logsForCard.length;
+                const knowledgeState = knowledgeMap.get(String(card.id));
+                console.log(`[Test 2] Lookup for card ID ${card.id}:`, knowledgeState);
+                const logsForCard = allLogs.filter(log => String(log.cardID) === String(card.id));
                 const correctLogs = logsForCard.filter(log => log.wasCorrect);
+                const totalInteractions = logsForCard.length;
                 const correctCount = correctLogs.length;
 
                 let averageIQS = 0;
@@ -1659,13 +1849,14 @@
                     totalInteractions: totalInteractions,
                     correctPercentage: totalInteractions > 0 ? (correctCount / totalInteractions) * 100 : 0,
                     avgIQS: averageIQS,
-                    stability: knowledgeState?.stability || 'N/A',
-                    masteryScore: knowledgeState?.masteryScore || 'N/A',
+                    stability: knowledgeState?.stability, 
+                    masteryScore: knowledgeState?.masteryScore, 
                     lastReviewed: knowledgeState?.lastReviewed ? new Date(knowledgeState.lastReviewed).toLocaleDateString() : 'Never',
                     order: card.order || Infinity 
                 };
+                console.log('[Test 3] Final calculated stat object:', stat);
             });
-
+            
             if (cardStats.length === 0) {
                 resultContainer.innerHTML = '<p>This deck has no cards.</p>';
                 return;
@@ -1693,14 +1884,17 @@
             `;
             
             cardsForStats.forEach(stat => {
+                const stabilityText = typeof stat.stability === 'number' ? stat.stability.toFixed(2) : 'N/A';
+                const masteryText = typeof stat.masteryScore === 'number' ? stat.masteryScore.toFixed(2) : 'N/A';
+
                 tableHTML += `
                     <tr>
                         ${isSequence ? `<td>${stat.order}</td>` : ''}
                         <td title="${stat.question}">${stat.question}</td>
                         <td>${stat.correctPercentage.toFixed(1)}%</td>
                         <td>${(stat.avgIQS).toFixed(2)}</td>
-                        <td>${typeof stat.stability === 'number' ? stat.stability.toFixed(2) : stat.stability}</td>
-                        <td>${typeof stat.masteryScore === 'number' ? stat.masteryScore.toFixed(2) : stat.masteryScore}</td>
+                        <td>${stabilityText}</td>
+                        <td>${masteryText}</td>
                         <td>${stat.lastReviewed}</td>
                         <td>${stat.totalInteractions}</td>
                     </tr>
@@ -1753,10 +1947,34 @@
             const canvasId = 'latencyScatterPlot';
             if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
 
-            const data = logs.filter(log => log.latency !== null).map(log => ({
+            const data = logs.filter(log => log.latency !== null && log.wasCorrect !== undefined).map(log => ({
                 x: log.latency,
                 y: log.wasCorrect ? 1 + (Math.random() * 0.1 - 0.05) : 0 + (Math.random() * 0.1 - 0.05) // Add jitter
             }));
+
+            if (data.length === 0) {
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                chartInstances[canvasId] = new Chart(ctx, {
+                    type: 'scatter',
+                    data: { datasets: [] },
+                    options: {
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: false }
+                        },
+                        scales: {
+                            x: { title: { display: true, text: 'Recall Latency (ms)' } },
+                            y: {
+                                title: { display: true, text: 'Outcome' },
+                                ticks: { callback: (value) => value === 1 ? 'Correct' : (value === 0 ? 'Incorrect' : '') },
+                                min: -0.2, max: 1.2
+                            }
+                        }
+                    }
+                });
+                document.getElementById(canvasId).parentNode.innerHTML += '<p style="text-align: center; color: var(--secondary-text); margin-top: 10px;">No data available for scatter plot.</p>';
+                return;
+            }
 
             const ctx = document.getElementById(canvasId).getContext('2d');
             chartInstances[canvasId] = new Chart(ctx, {
@@ -1765,18 +1983,42 @@
                     datasets: [{
                         label: 'User Interaction',
                         data: data,
-                        backgroundColor: (context) => context.raw.y > 0.5 ? 'rgba(56, 178, 172, 0.7)' : 'rgba(229, 62, 62, 0.7)',
+                        backgroundColor: (context) => {
+                            if (!context.raw) return 'rgba(0,0,0,0)';
+                            // Check if 'y' property exists before accessing it
+                            const outcome = typeof context.raw.y !== 'undefined' ? context.raw.y : 0; 
+                            return outcome > 0.5 ? 'rgba(56, 178, 172, 0.7)' : 'rgba(229, 62, 62, 0.7)';
+                        },
                     }]
                 },
                 options: {
                     scales: {
                         x: { title: { display: true, text: 'Recall Latency (ms)' } },
-                        y: { 
+                        y: {
                             title: { display: true, text: 'Outcome' },
                             ticks: {
                                 callback: (value) => value === 1 ? 'Correct' : (value === 0 ? 'Incorrect' : '')
                             },
                             min: -0.2, max: 1.2
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.raw.y > 0.5) {
+                                        label += 'Correct';
+                                    } else {
+                                        label += 'Incorrect';
+                                    }
+                                    label += ` (Latency: ${context.raw.x}ms)`;
+                                    return label;
+                                }
+                            }
                         }
                     }
                 }
@@ -2058,52 +2300,183 @@
             }
         });
         document.getElementById('writeAnswerInput').addEventListener('keydown', handleInteractionLogging);
+
+        window.addEventListener('online', () => {
+                isOnline = true;
+                updateOnlineStatusUI();
+                showToast('You are back online! Smart features are enabled.', 'success');
+            });
+
+        window.addEventListener('offline', () => {
+            isOnline = false;
+            updateOnlineStatusUI();
+            showToast('You are offline. AI features will be disabled.', 'error');
+        });
+        
+        const dropZone = document.getElementById('file-drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const selectFileBtn = document.getElementById('select-file-btn');
+
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleAiFiles(e.dataTransfer.files);
+        });
+        selectFileBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => handleAiFiles(fileInput.files));
+        document.getElementById('add-text-btn').addEventListener('click', addTextAsDocument);
+        document.getElementById('process-btn').addEventListener('click', processAllDocuments);
     }
     
-    function showToast(message, type = 'success', duration = 3000) {
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
-        container.appendChild(toast);
-        setTimeout(() => toast.classList.add('show'), 10);
-        setTimeout(() => {
-            toast.classList.remove('show');
-            toast.addEventListener('transitionend', () => toast.remove());
-        }, duration);
+    function showToast(message, type = 'info', duration = 3000, icon = null) {
+        if (globalSettings.enableToasts === false) {
+            return;
+        }
+        toastQueue.push({ message, type, duration, icon }); 
+        if (!isToastVisible) {
+            processToastQueue();
+        }
     }
 
-    function showView(viewId, isInitial = false) {
-        if (activeView === viewId && !isInitial) return;
-        if (activeView === 'editorView' && !isEditorClean()) {
+    function processToastQueue() {
+        if (toastQueue.length === 0) {
+            isToastVisible = false;
+            return;
+        }
+
+        isToastVisible = true;
+        
+        const toastData = toastQueue.shift();
+
+        const toastElement = document.getElementById('dynamicToast');
+
+        let toastContent = '';
+        if (toastData.icon) {
+            toastContent += `<div style="width: 20px; height: 20px;">${toastData.icon}</div>`;
+        }
+        toastContent += `<span>${toastData.message}</span>`;
+        toastElement.innerHTML = toastContent;
+        
+        toastElement.className = `toast ${toastData.type}`; 
+        setTimeout(() => toastElement.classList.add('show'), 10);
+
+        setTimeout(() => {
+            toastElement.classList.remove('show');
+            
+            setTimeout(() => {
+                processToastQueue();
+            }, 500); 
+        }, toastData.duration);
+    }
+
+    async function runSmartCoachChecks(context, data = {}) {
+        let messageShown = false;
+
+        const showRandomMessage = (messageArray, replacements = {}, type = 'info', icon = null) => {
+            if (messageShown) return;
+            let message = messageArray[Math.floor(Math.random() * messageArray.length)];
+            for (const key in replacements) {
+                message = message.replace(`{${key}}`, replacements[key]);
+            }
+            showToast(message, type, 5000, icon); // The icon will be null
+            messageShown = true;
+        };
+
+        switch (context) {
+            case 'dashboardLoad':
+                const today = new Date().toDateString();
+                if (analyticsData.lastGreetingDate !== today) {
+                    if (analyticsData.streak > 1) {
+                        // Emoji '🔥' removed from this call
+                        showRandomMessage(smartCoachMessages.milestones.streak, { streak: analyticsData.streak, username: globalSettings.username }, 'success');
+                    } else {
+                        // Emoji '👋' removed from this call
+                        showRandomMessage(smartCoachMessages.greetings, { username: globalSettings.username }, 'info');
+                    }
+                    analyticsData.lastGreetingDate = today;
+                    await saveDataToDB('appData', { key: 'analytics', ...analyticsData });
+                }
+                break;
+
+            case 'sessionEnd':
+                const { deckId, correctCount, incorrectCount } = data;
+                const deck = decks[deckId];
+                const totalAnswered = correctCount + incorrectCount;
+                if (totalAnswered === 0) return;
+
+                const knowledgeStates = await getAllDataFromDB('userKnowledgeState');
+                const cardIdsInDeck = new Set(deck.cards.map(c => c.id));
+                const masteredCount = knowledgeStates.filter(s => cardIdsInDeck.has(s.cardID) && s.masteryScore >= 0.95).length;
+
+                if (masteredCount === deck.cards.length) {
+                    showRandomMessage(smartCoachMessages.milestones.deckMastered, { deckName: deck.name }, 'success');
+                    break;
+                }
+                
+                const masteryThresholds = [50, 25, 10];
+                for (const threshold of masteryThresholds) {
+                    if (data.masteryCountBefore < threshold && masteredCount >= threshold) {
+                        showRandomMessage(smartCoachMessages.milestones.cardsMastered, { count: threshold }, 'success');
+                        break;
+                    }
+                }
+                if (messageShown) break;
+
+                const accuracy = totalAnswered > 0 ? correctCount / totalAnswered : 0;
+                if (accuracy >= 0.9) {
+                    showRandomMessage(smartCoachMessages.sessionFeedback.highAccuracy, {}, 'success');
+                } else if (accuracy >= 0.6) {
+                    showRandomMessage(smartCoachMessages.sessionFeedback.mediumAccuracy, {}, 'info');
+                } else {
+                    showRandomMessage(smartCoachMessages.sessionFeedback.lowAccuracy, {}, 'info');
+                }
+                break;
+        }
+    }
+
+    function showView(viewId, isInitial = false, callback = null) {
+        if (activeView === 'editorView' && !isEditorClean() && viewId !== 'editorView') {
             showConfirmModal(
                 'You have unsaved changes. Are you sure you want to leave?',
-                () => transitionView(viewId, isInitial)
+                () => transitionView(viewId, isInitial, callback)
             );
             return;
         }
-        transitionView(viewId, isInitial);
-    }
+
+        if (activeView === viewId && !isInitial) {
+            if (callback) {
+                callback();
+            }
+            return; 
+        }
+        
+            transitionView(viewId, isInitial, callback);
+        }
     
-    function transitionView(viewId, isInitial = false) {
-         if (!isInitial && activeView !== viewId && viewId !=='dashboard') {
+    function transitionView(viewId, isInitial = false, callback = null) {
+        if (!isInitial && activeView !== viewId && viewId !=='dashboard') {
             if(viewHistory[viewHistory.length-1] !== activeView) {
-                 viewHistory.push(activeView);
+                    viewHistory.push(activeView);
             }
         }
         
         const currentView = document.getElementById(activeView);
         const nextView = document.getElementById(viewId);
         
-        const isDashboard = viewId === 'dashboard' && document.getElementById('deckDetailView').classList.contains('hidden');
-        document.querySelector('.search-bar').style.display = (viewId === 'dashboard') ? 'flex' : 'none';
-        document.getElementById('headerSettingsBtn').style.display = (viewId === 'dashboard') ? 'flex' : 'none';
-        document.getElementById('headerBackBtn').classList.toggle('hidden', viewHistory.length === 0 || viewId === 'dashboard');
+        const isDashboard = viewId === 'dashboard';
+        document.querySelector('.search-bar').style.display = isDashboard ? 'flex' : 'none';
+        document.getElementById('headerSettingsBtn').style.display = isDashboard ? 'flex' : 'none';
+        document.getElementById('headerBackBtn').classList.toggle('hidden', viewHistory.length === 0 || isDashboard);
+        
+        document.getElementById('headerHomeBtn').classList.toggle('hidden', isDashboard);
 
         if (isInitial) {
             if(currentView) currentView.classList.remove('fade-in', 'fade-out', 'animating');
             nextView.classList.add('fade-in', 'animating');
             activeView = viewId;
+            if (callback) callback(); 
             return;
         }
 
@@ -2118,7 +2491,8 @@
                 nextView.classList.add('fade-in', 'animating');
                 activeView = viewId;
                 window.scrollTo(0, 0);
-            }, 400);
+                if (callback) callback(); 
+            }, 400); 
         }
     }
     
@@ -2170,29 +2544,40 @@
     }
 
     async function backToDashboard(isFromLogo = false) {
-        const performBack = async () => {
-            if (currentDeckId && currentMode) await endSession();
-            
-            showView('dashboard');
-            currentDeckId = null;
-            currentMode = null;
-            document.getElementById('deckDetailView').classList.add('hidden');
-            document.getElementById('decksSection').classList.remove('hidden');
-            document.querySelector('.create-section').classList.remove('hidden');
-            currentViewingDeckId = null;
-            updateDashboard();
-            if(isFromLogo) viewHistory = [];
-            document.getElementById('headerBackBtn').classList.add('hidden');
-        };
-        
         if (activeView === 'editorView' && !isEditorClean()) {
             showConfirmModal(
                 'You have unsaved changes. Are you sure you want to leave?',
-                () => { transitionView('dashboard'); performBack(); }
+                () => { 
+                    transitionView('dashboard'); 
+                    // After confirming, we still need to reset the dashboard state.
+                    if (currentDeckId && currentMode) endSession();
+                    resetDashboardState(true); // Call our new helper
+                }
             );
-        } else {
-            performBack();
+            return;
         }
+
+        if (activeView !== 'dashboard') {
+            if (currentDeckId && currentMode) await endSession();
+            showView('dashboard', false, () => resetDashboardState(isFromLogo));
+        } else {
+            resetDashboardState(isFromLogo);
+        }
+    }
+
+    function resetDashboardState(clearHistory = false) {
+        document.getElementById('deckDetailView').classList.add('hidden');
+        document.getElementById('decksSection').classList.remove('hidden');
+        document.querySelector('.create-section').classList.remove('hidden');
+        
+        currentViewingDeckId = null;
+        updateDashboard(); 
+        
+        if (clearHistory) {
+            viewHistory = [];
+        }
+        
+        document.getElementById('headerBackBtn').classList.toggle('hidden', viewHistory.length === 0);
     }
     
     async function loadSavedData() {
@@ -2233,6 +2618,7 @@
         }
         await checkForOutdatedAnalysis();
         await updateDashboard();
+        runSmartCoachChecks('dashboardLoad');
     }
 
     function formatDate(isoString) {
@@ -2355,6 +2741,13 @@
             decksContainer.appendChild(categoryFolder);
         }
         updateDueCardCounts();
+        
+        const internalBtn = document.getElementById('internalDashboardBtn');
+        if (globalSettings.devMode === true) {
+            internalBtn.classList.remove('hidden');
+        } else {
+            internalBtn.classList.add('hidden');
+        }
     }
 
     function showDeckDetail(deckId, cardElement) {
@@ -2527,28 +2920,44 @@
     }
     
     async function createNewDeck(name, category, cards, notes = '', typeHint = 'General') {
-            const deckId = Date.now().toString();
-            const settings = { ...DEFAULT_DECK_SETTINGS };
-            
-            const tempDeck = { name, category, cards, notes, typeHint };
-            showToast("Analyzing new deck content...", "info", 2000);
-            await processDeckContent(tempDeck);
+        const deckId = Date.now().toString();
+        const settings = { ...DEFAULT_DECK_SETTINGS };
+        
+        const tempDeck = { name, category, cards, notes, typeHint };
+        showToast("Analyzing new deck content...", "info", 2000);
+        await processDeckContent(tempDeck);
 
-            const sm2 = new SM2Algorithm();
-            const processedCards = tempDeck.cards.map(c => ({
-                ...c,
-                sm2Data: sm2.calculateNextReview(c)(3)
-            }));
+        const sm2 = new SM2Algorithm();
+        const processedCards = tempDeck.cards.map(c => ({
+            ...c,
+            sm2Data: sm2.calculateNextReview(c)(3)
+        }));
 
-            const newDeck = {
-                id: deckId, name, category, cards: processedCards, notes, typeHint,
-                created: new Date().toISOString(),
-                settings: settings,
-            };
-            decks[deckId] = newDeck;
-            await saveDataToDB('decks', newDeck);
-            return deckId;
-        }
+        const newDeck = {
+            id: deckId, name, category, cards: processedCards, notes, typeHint,
+            created: new Date().toISOString(),
+            settings: settings,
+        };
+        decks[deckId] = newDeck;
+
+        const transaction = db.transaction(['userKnowledgeState'], 'readwrite');
+        const stateStore = transaction.objectStore('userKnowledgeState');
+        newDeck.cards.forEach(card => {
+            stateStore.put({
+                userID: 'default_user',
+                cardID: card.id,
+                masteryScore: 0.5, 
+                stability: 1.0,    
+                lastReviewed: new Date().toISOString(),
+                recallHistory: []
+            });
+        });
+
+        await new Promise(resolve => transaction.oncomplete = resolve);
+
+        await saveDataToDB('decks', newDeck);
+        return deckId;
+    }
 
     function editDeck(deckId) {
         const deck = decks[deckId];
@@ -2607,7 +3016,7 @@
     }
 
     function editorAddNewCard(card = {}) {
-        const { question = '', answer = '', questionImage = '', answerImage = '', order = '' } = card;
+        const { id = null, question = '', answer = '', questionImage = '', answerImage = '', order = '' } = card;
         editorCardCounter++;
         const container = document.getElementById('flashcardsContainer');
 
@@ -2625,7 +3034,7 @@
             : '';
 
         newRow.innerHTML = `
-            <div class="flashcard-item">
+            <div class="flashcard-item" data-original-id="${id || ''}">
                 <div class="flashcard-number" style="display: flex; align-items: center;">
                     ${orderInputHTML}
                     <span>${cardNumber}.</span>
@@ -2633,7 +3042,7 @@
                 
                 <textarea class="question-input" placeholder="Question (e.g., The event or item in the sequence)">${question}</textarea>
                 <div class="image-controls">
-                    <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="triggerImageUpload(this)">Upload Image</button>
+                    <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="triggerImageUpload(this)" tabindex="-1">Upload Image</button>
                 </div>
                 <div class="question-image-preview image-preview">${questionImagePreview}</div>
                 <input type="file" class="image-upload-input" accept="image/*" style="display:none;" onchange="handleImageFile(this)">
@@ -2641,7 +3050,7 @@
                 
                 <textarea class="solution-input" placeholder="Answer (e.g., The name of the event or item)" style="margin-top:20px;">${answer}</textarea>
                 <div class="image-controls">
-                    <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="triggerImageUpload(this)">Upload Image</button>
+                    <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="triggerImageUpload(this)" tabindex="-1">Upload Image</button>
                 </div>
                 <div class="answer-image-preview image-preview">${answerImagePreview}</div>
                 <input type="file" class="image-upload-input" accept="image/*" style="display:none;" onchange="handleImageFile(this)">
@@ -2755,14 +3164,15 @@
         
         const cards = Array.from(document.querySelectorAll('#editorView .flashcard-item')).map(el => {
             const orderInput = el.querySelector('.card-order-input');
+            const originalId = el.dataset.originalId; 
             return {
-                id: Date.now() + Math.random(),
+                id: originalId ? originalId : Date.now() + Math.random(),
                 question: el.querySelector('.question-input').value.trim(),
                 answer: el.querySelector('.solution-input').value.trim(),
                 questionImage: el.querySelector('.question-image-input').value.trim(),
                 answerImage: el.querySelector('.answer-image-input').value.trim(),
-                order: orderInput ? parseInt(orderInput.value) : 0, // Save the order
-                isNew: true
+                order: orderInput ? parseInt(orderInput.value) : 0,
+                isNew: !originalId
             };
         }).filter(c => c.question || c.questionImage);
 
@@ -2771,6 +3181,36 @@
             saveBtn.innerHTML = originalText;
             saveBtn.disabled = false;
             return; 
+        }
+
+        const newCards = cards.filter(c => c.isNew);
+        if (newCards.length > 0) {
+            try {
+                await new Promise((resolve, reject) => {
+                    const transaction = db.transaction(['userKnowledgeState'], 'readwrite');
+                    const stateStore = transaction.objectStore('userKnowledgeState');
+                    transaction.oncomplete = resolve;
+                    transaction.onerror = reject;
+
+                    newCards.forEach(card => {
+                        stateStore.put({
+                            userID: 'default_user',
+                            cardID: card.id,
+                            masteryScore: 0.5,
+                            stability: 1.0,
+                            lastReviewed: new Date().toISOString(),
+                            recallHistory: []
+                        });
+                        card.isNew = false; 
+                    });
+                });
+            } catch (error) {
+                console.error("Failed to save knowledge state for new cards:", error);
+                showToast("Error saving new cards' progress.", "error");
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+                return; 
+            }
         }
         
         const tempDeck = { name, category, cards, notes, typeHint };
@@ -2826,6 +3266,7 @@
     }
     
     async function saveStudySettings() {
+        globalSettings.enableInStudyEditing = document.getElementById('enableInStudyEditing').checked;
         globalSettings.enableInStudyEditing = document.getElementById('enableInStudyEditing').checked;
         await saveDataToDB('appData', { key: 'userSettings', ...globalSettings });
         showToast('Settings saved!');
@@ -2903,6 +3344,10 @@
             currentMode = 'learn';
             currentDeckId = deckId;
             const deck = decks[deckId];
+
+            document.getElementById('progressView').classList.add('hidden');
+            document.getElementById('cardView').classList.add('hidden');
+            document.getElementById('completeView').classList.add('hidden');
 
             if (deck.cards.length > 0 && typeof deck.cards[0].archetype === 'undefined') {
                 showToast("Performing first-time analysis...", "info", 2000);
@@ -2987,16 +3432,25 @@
             if (!currentDeckId) return;
             const deck = decks[currentDeckId];
             if (!deck) return;
+
             if (currentMode === 'learn') {
-                deck.learnState = { buckets: studyState.buckets, currentRound: studyState.currentRound, maxBuckets: studyState.settings.maxBuckets };
+                if (deck.learnState) delete deck.learnState;
             } else if (currentMode === 'review') {
                 deck.reviewState = { stillLearning: studyState.stillLearning, correct: studyState.correct, currentRound: studyState.currentRound, lastRoundIncorrect: studyState.lastRoundIncorrect };
+            } else if (currentMode === 'sequence') {
+                deck.sequenceState = {
+                    currentChunkIndex: studyState.currentChunkIndex,
+                    sequencePhase: studyState.sequencePhase
+                };
             }
             await saveDataToDB('decks', deck);
-            updateDashboard();
+            await updateDashboard(); 
         }
         
-        function showProgress() {
+        async function showProgress() {
+            if (currentMode === 'learn' && studyState.currentRound > 1) {
+                await runSmartCoachChecks('roundEnd');
+            }
             const cardView = document.getElementById('cardView');
             const progressView = document.getElementById('progressView');
             transitionSubView(cardView, progressView);
@@ -3129,31 +3583,24 @@
         }
 
         async function continueStudy() {
+            const continueBtn = document.getElementById('continueBtn');
+            continueBtn.disabled = true; // Disable the button immediately.
+            continueBtn.innerHTML = '<span class="spinner" style="border-width:2px; width:16px; height:16px;"></span> Loading...';
+
             if (currentMode === 'learn') {
                 const allCards = decks[currentDeckId].cards;
                 const knowledgeStates = await getAllDataFromDB('userKnowledgeState');
+                studyState.knowledgeStates = new Map(knowledgeStates.map(item => [item.cardID, item]));
                 const knowledgeMap = new Map(knowledgeStates.map(item => [item.cardID, item]));
-
-                const nonMasteredCards = allCards
-                    .map(card => ({
-                        ...card,
-                        mastery: knowledgeMap.get(card.id)?.masteryScore || 0.5
-                    }))
-                    .filter(card => card.mastery < 0.95); 
-
+                const nonMasteredCards = allCards.map(card => ({...card, mastery: knowledgeMap.get(card.id)?.masteryScore || 0.5 })).filter(card => card.mastery < 0.95);
                 nonMasteredCards.sort((a, b) => a.mastery - b.mastery);
-
-                let poolSize;
-                if (lastKnownFocusScore >= 0.85) {
-                    poolSize = 7; 
-                } else if (lastKnownFocusScore >= 0.65) {
-                    poolSize = 5; 
-                } else {
-                    poolSize = 3; 
-                }
-
-                studyState.activeLearningPool = nonMasteredCards.slice(0, poolSize);
                 
+                let poolSize;
+                if (lastKnownFocusScore >= 0.85) poolSize = 7;
+                else if (lastKnownFocusScore >= 0.65) poolSize = 5;
+                else poolSize = 3;
+                
+                studyState.activeLearningPool = nonMasteredCards.slice(0, poolSize);
                 studyState.roundCards = shuffleArray(studyState.activeLearningPool);
 
             } else if (currentMode === 'review') {
@@ -3179,11 +3626,37 @@
                 }
                 studyState.roundCards = sortedCards;
             }
-
             studyState.currentCardIndex = 0;
+
+            studyState.roundCards.forEach(card => {
+                card.questionTypeToShow = selectOptimalQuestionType(card);
+            });
+
             if (studyState.roundCards.length > 0) {
-                transitionSubView(document.getElementById('progressView'), document.getElementById('cardView'));
+                const cardsRequiringGeneration = studyState.roundCards.filter(
+                    card => card.questionTypeToShow === 'MultipleChoice' && isOnline
+                );
+
+                if (cardsRequiringGeneration.length > 0) {
+                    transitionSubView(document.getElementById('progressView'), document.getElementById('preGenerationView'));
+
+                    const updateProgressUI = (completed, total) => {
+                        const percent = total > 0 ? (completed / total) * 100 : 100;
+                        document.getElementById('preGenerationProgress').style.width = `${percent}%`;
+                        document.getElementById('preGenerationProgressText').textContent = `${completed} / ${total}`;
+                    };
+
+                    await preGenerateAdaptiveQuestions(studyState.roundCards, updateProgressUI);
+
+                    transitionSubView(document.getElementById('preGenerationView'), document.getElementById('cardView'));
+
+                } else {
+
+                    transitionSubView(document.getElementById('progressView'), document.getElementById('cardView'));
+                }
+
                 showNextCard();
+
             } else {
                 if(currentMode === 'learn') {
                    showComplete();
@@ -3192,68 +3665,87 @@
                    showToast("No cards available to study in this round.");
                 }
             }
+
+            continueBtn.disabled = false;
+            continueBtn.innerHTML = studyState.currentRound === 1 ? 'Start Round' : 'Continue Round';
         }
 
-        function showNextSequenceCard() {
-            if (studyState.currentCardIndex >= studyState.sequenceCards.length) {
-                if (studyState.sequencePhase === 'Forward Chaining') {
-                    studyState.sequencePhase = 'Full Recall';
-                    studyState.roundCards = [...studyState.sequenceCards]; 
-                    studyState.currentCardIndex = 0;
-                    showToast("Forward Chaining Complete! Now starting Full Recall.", "success", 4000);
-                    showProgress(); 
-                    return;
-                } else {
-                    showComplete();
-                    return; 
-                }
-            }
-
-            const card = studyState.roundCards[studyState.currentCardIndex];
-            const questionElement = document.getElementById('cardQuestion');
-
-            if (studyState.sequencePhase === 'Forward Chaining') {
-                if (studyState.currentCardIndex === 0) {
-                    questionElement.innerHTML = `What is the first item in the sequence?`;
-                } else {
-                    const prevItem = studyState.sequenceCards[studyState.currentCardIndex - 1].answer; 
-                    questionElement.innerHTML = `What comes after: <strong>${prevItem}</strong>?`;
-                }
-            } else { 
-                questionElement.innerHTML = `What is item #${studyState.currentCardIndex + 1} in the sequence?`;
-            }
-
-            document.getElementById('flashcardViewContainer').classList.remove('hidden');
+        async function showNextCard() {
+            document.getElementById('flashcardViewContainer').classList.add('hidden');
+            document.getElementById('passiveReviewView').classList.add('hidden');
+            document.getElementById('dragDropView').classList.add('hidden');
             document.getElementById('mcqView').classList.add('hidden');
-            
+            document.getElementById('writeAnswerInput').classList.add('hidden');
             const simpleButtons = document.getElementById('simpleAnswerButtons');
             simpleButtons.classList.remove('hidden');
             simpleButtons.querySelectorAll('button').forEach(btn => btn.classList.add('hidden'));
 
-            document.getElementById('writeAnswerInput').classList.remove('hidden');
-            document.getElementById('checkAnswerBtn').classList.remove('hidden');
-            document.getElementById('dontKnowBtn').classList.remove('hidden');
-            
-            startInteractionLog(card.id);
-
-            const flashcardElem = document.querySelector('#cardView .flashcard');
-            flashcardElem.classList.remove('is-flipped');
-            document.getElementById('cardAnswer').innerHTML = card.answer;
-            document.getElementById('cardAnswerContent').classList.add('hidden');
-            
-            const writeInput = document.getElementById('writeAnswerInput');
-            writeInput.value = '';
-            writeInput.disabled = false;
-            writeInput.classList.remove('correct', 'incorrect');
-            setTimeout(() => writeInput.focus(), 100);
-
-            document.getElementById('cardRoundInfo').textContent = 
-                `${studyState.sequencePhase} - Item ${studyState.currentCardIndex + 1} of ${studyState.sequenceCards.length}`;
-        }
-
-        async function showNextCard() {
+            const checkBtn = document.getElementById('checkAnswerBtn');
+            const dontKnowBtn = document.getElementById('dontKnowBtn');
             if (currentMode === 'sequence') {
-                return showNextSequenceCard();
+                checkBtn.onclick = checkSequenceAnswer;
+                dontKnowBtn.onclick = dontKnowSequenceAnswer;
+            } else {
+                checkBtn.onclick = autoCheckAnswer;
+                dontKnowBtn.onclick = dontKnowAnswer;
+            }
+
+            if (currentMode === 'sequence') {
+                const currentChunk = studyState.sequenceChunks[studyState.currentChunkIndex];
+                const card = currentChunk ? currentChunk[studyState.currentCardIndex] : null;
+
+                switch (studyState.sequencePhase) {
+                    case 'Passive Review':
+                        document.getElementById('passiveReviewView').classList.remove('hidden');
+                        const list = document.getElementById('passiveReviewList');
+                        list.innerHTML = currentChunk.map(c => `<li>${c.answer}</li>`).join('');
+                        break;
+                    case 'Forward Chaining':
+                    case 'Backward Chaining':
+                        document.getElementById('flashcardViewContainer').classList.remove('hidden');
+                        document.getElementById('writeAnswerInput').classList.remove('hidden');
+                        document.getElementById('checkAnswerBtn').classList.remove('hidden');
+                        document.getElementById('dontKnowBtn').classList.remove('hidden');
+                        const qElement = document.getElementById('cardQuestion');
+                        if (studyState.sequencePhase === 'Forward Chaining') {
+                            qElement.innerHTML = (studyState.currentCardIndex === 0) ? `What is the first item in this chunk?` : `What comes after: <strong>${currentChunk[studyState.currentCardIndex - 1].answer}</strong>?`;
+                        } else {
+                            qElement.innerHTML = (studyState.currentCardIndex === currentChunk.length - 1) ? `What is the last item in this chunk?` : `What comes before: <strong>${currentChunk[studyState.currentCardIndex + 1].answer}</strong>?`;
+                        }
+                        startInteractionLog(card.id);
+                        break;
+                    case 'Drag and Drop':
+                        document.getElementById('dragDropView').classList.remove('hidden');
+                        setupDragDropView(currentChunk);
+                        break;
+                    case 'InterChunkReview':
+                        const reviewCard = studyState.roundCards[0];
+                        document.getElementById('flashcardViewContainer').classList.remove('hidden');
+                        document.getElementById('writeAnswerInput').classList.remove('hidden');
+                        document.getElementById('checkAnswerBtn').classList.remove('hidden');
+                        document.getElementById('dontKnowBtn').classList.remove('hidden');
+                        document.getElementById('cardQuestion').innerHTML = `Recall from previous chunk: What is item "${reviewCard.question}"?`;
+                        startInteractionLog(reviewCard.id);
+                        break;
+                    case 'Weakest Link':
+                        const weakestCard = studyState.roundCards[studyState.currentCardIndex];
+                        document.getElementById('flashcardViewContainer').classList.remove('hidden');
+                        document.getElementById('writeAnswerInput').classList.remove('hidden');
+                        document.getElementById('checkAnswerBtn').classList.remove('hidden');
+                        document.getElementById('dontKnowBtn').classList.remove('hidden');
+                        document.getElementById('cardQuestion').innerHTML = `Recall: What is item "${weakestCard.question}"?`;
+                        startInteractionLog(weakestCard.id);
+                        break;
+                }
+                document.querySelector('#cardView .flashcard').classList.remove('is-flipped');
+                if (card) document.getElementById('cardAnswer').innerHTML = card.answer;
+                document.getElementById('cardAnswerContent').classList.add('hidden');
+                const writeInput = document.getElementById('writeAnswerInput');
+                writeInput.value = '';
+                writeInput.disabled = false;
+                writeInput.classList.remove('correct', 'incorrect');
+                if(!writeInput.classList.contains('hidden')) setTimeout(() => writeInput.focus(), 100);
+                return;
             }
 
             if (studyState.currentCardIndex >= studyState.roundCards.length && studyState.incorrectInThisRound.length > 0) {
@@ -3265,39 +3757,26 @@
             if (studyState.currentCardIndex >= studyState.roundCards.length) {
                 studyState.currentRound++;
                 await saveStudyProgress();
-                showProgress();
+                await showProgress();
                 return;
             }
 
             window.scrollTo(0, 0);
             const card = studyState.roundCards[studyState.currentCardIndex];
-            
-            const knowledgeStates = await getAllDataFromDB('userKnowledgeState');
-            studyState.knowledgeStates = new Map(knowledgeStates.map(item => [item.cardID, item]));
-
-            document.getElementById('flashcardViewContainer').classList.add('hidden');
-            document.getElementById('mcqView').classList.add('hidden');
-            document.getElementById('writeAnswerInput').classList.add('hidden');
-            const simpleButtons = document.getElementById('simpleAnswerButtons');
-            simpleButtons.classList.add('hidden');
-            simpleButtons.querySelectorAll('button').forEach(btn => btn.classList.add('hidden'));
-
-            const questionType = selectOptimalQuestionType(card);
-            simpleButtons.classList.remove('hidden');
+            const questionType = card.questionTypeToShow;
 
             switch (questionType) {
                 case 'MultipleChoice':
                     document.getElementById('mcqView').classList.remove('hidden');
                     document.getElementById('mcqQuestion').innerHTML = card.question;
                     generateAndDisplayMCQ(card, decks[currentDeckId].cards);
-                    simpleButtons.classList.add('hidden'); // MCQ has its own buttons
+                    simpleButtons.classList.add('hidden');
                     break;
                 
                 case 'Cloze':
                     document.getElementById('flashcardViewContainer').classList.remove('hidden');
                     const clozeText = card.question.replace(new RegExp(card.answer, 'ig'), '___________');
                     document.getElementById('cardQuestion').innerHTML = clozeText;
-                    
                     document.getElementById('writeAnswerInput').classList.remove('hidden');
                     document.getElementById('checkAnswerBtn').classList.remove('hidden');
                     document.getElementById('dontKnowBtn').classList.remove('hidden');
@@ -3307,7 +3786,6 @@
                 case 'Type': 
                     document.getElementById('flashcardViewContainer').classList.remove('hidden');
                     document.getElementById('cardQuestion').innerHTML = card.question;
-                    
                     document.getElementById('writeAnswerInput').classList.remove('hidden');
                     document.getElementById('checkAnswerBtn').classList.remove('hidden');
                     document.getElementById('dontKnowBtn').classList.remove('hidden');
@@ -3335,16 +3813,103 @@
             document.getElementById('cardRoundInfo').textContent = `Round ${studyState.currentRound} - Card ${studyState.currentCardIndex + 1} of ${studyState.roundCards.length}`;
         }
 
+        async function moveToNextSequencePhase() {
+            const currentChunk = studyState.sequenceChunks[studyState.currentChunkIndex];
+            let nextPhase = null;
+
+            switch (studyState.sequencePhase) {
+                case null:
+                    nextPhase = 'Passive Review';
+                    break;
+                case 'Passive Review':
+                    nextPhase = 'Forward Chaining';
+                    studyState.currentCardIndex = 0;
+                    break;
+                case 'Forward Chaining':
+                    nextPhase = 'Backward Chaining';
+                    studyState.currentCardIndex = currentChunk.length - 1;
+                    break;
+                case 'Backward Chaining':
+                    nextPhase = 'Drag and Drop';
+                    break;
+                case 'Drag and Drop':
+                    if (studyState.currentChunkIndex > 0) {
+                        const reviewPool = studyState.sequenceChunks.slice(0, studyState.currentChunkIndex).flat();
+                        const reviewCard = reviewPool[Math.floor(Math.random() * reviewPool.length)];
+
+                        nextPhase = 'InterChunkReview';
+                        studyState.roundCards = [reviewCard];
+                        studyState.currentCardIndex = 0;
+                        studyState.nextPhaseAfterReview = (studyState.currentChunkIndex + 1 < studyState.sequenceChunks.length) ? 'Passive Review' : 'CheckWeakest';
+                        
+                        showToast(`Chunk ${studyState.currentChunkIndex + 1} complete! Quick checkup...`, "success");
+                        studyState.currentChunkIndex++;
+                        break;
+                    }
+
+                    studyState.currentChunkIndex++;
+                    if (studyState.currentChunkIndex < studyState.sequenceChunks.length) {
+                        nextPhase = 'Passive Review';
+                        showToast(`Chunk ${studyState.currentChunkIndex} complete! Starting chunk ${studyState.currentChunkIndex + 1}.`, "success");
+                    } else {
+                        nextPhase = 'CheckWeakest';
+                    }
+                    break;
+
+                case 'InterChunkReview':
+                    nextPhase = studyState.nextPhaseAfterReview;
+                    studyState.nextPhaseAfterReview = null;
+                    break;
+
+                case 'CheckWeakest':
+                    const knowledgeStates = await getAllDataFromDB('userKnowledgeState');
+                    const knowledgeMap = new Map(knowledgeStates.map(item => [item.cardID, item]));
+                    const weakestCards = studyState.sequenceCards
+                        .map(card => ({ ...card, mastery: knowledgeMap.get(card.id)?.masteryScore || 0.5 }))
+                        .filter(card => card.mastery < 0.90)
+                        .sort((a, b) => a.mastery - b.mastery)
+                        .slice(0, 5);
+
+                    if (weakestCards.length > 0) {
+                        nextPhase = 'Weakest Link';
+                        studyState.roundCards = weakestCards;
+                        studyState.currentCardIndex = 0;
+                        showToast("All chunks practiced! Now for a quick review of the tricky items.", "info");
+                    } else {
+                        const deck = decks[currentDeckId];
+                        if (deck.sequenceState) delete deck.sequenceState;
+                        await saveDataToDB('decks', deck);
+                        showComplete();
+                        return;
+                    }
+                    break;
+
+                case 'Weakest Link':
+                    const deck = decks[currentDeckId];
+                    if (deck.sequenceState) delete deck.sequenceState;
+                    await saveDataToDB('decks', deck);
+                    showComplete();
+                    return;
+            }
+
+            studyState.sequencePhase = nextPhase;
+            showNextCard();
+        }
+
         function showAnswer() {
-            document.querySelector('#cardView .flashcard').classList.add('is-flipped');
-            document.getElementById('cardAnswerContent').classList.remove('hidden');
-            
-            document.getElementById('showAnswerBtn').classList.add('hidden');
-            document.getElementById('checkAnswerBtn').classList.add('hidden');
-            
-            document.getElementById('correctBtn').classList.remove('hidden');
-            document.getElementById('incorrectBtn').classList.remove('hidden');
-            document.getElementById('showQuestionBtn').classList.remove('hidden');
+        document.querySelector('#cardView .flashcard').classList.add('is-flipped');
+        document.getElementById('cardAnswerContent').classList.remove('hidden');
+
+        if (currentMode === 'sequence') {
+            return;
+        }
+
+        document.getElementById('showAnswerBtn').classList.add('hidden');
+        document.getElementById('checkAnswerBtn').classList.add('hidden');
+        
+        document.getElementById('correctBtn').classList.remove('hidden');
+        document.getElementById('incorrectBtn').classList.remove('hidden');
+        document.getElementById('showQuestionBtn').classList.remove('hidden');
         }
         
         function showQuestion() {
@@ -3472,73 +4037,88 @@
             console.log("User baseline updated:", globalSettings.userBaseline);
         }
 
-        async function moveCard(card, correct, questionType = 'Flashcard') {
+        async function moveCard(card, correct) {
             const cardInDeck = decks[currentDeckId].cards.find(c => c.id === card.id);
             if(cardInDeck) cardInDeck.isNew = false;
      
+            const lastLog = currentInteractionLog; 
             const userBaseline = globalSettings.userBaseline || { latency: 1500, fluency: 10 };
             const iqs = calculateIQS({
-                recallLatency: currentInteractionLog.recallLatency || 2000,
-                answerFluency: currentInteractionLog.answerFluency || 5,
-                totalCorrections: currentInteractionLog.backspaceCount + currentInteractionLog.deleteCount,
-                attemptCount: currentInteractionLog.attemptCount || 1
+                recallLatency: lastLog.recallLatency || 2000,
+                answerFluency: lastLog.answerFluency || 5,
+                totalCorrections: lastLog.backspaceCount + lastLog.deleteCount,
+                attemptCount: lastLog.attemptCount || 1
             }, userBaseline);
             
-            const difficultyMultipliers = {
-                'MultipleChoice': 0.7,
-                'Cloze': 0.9,
-                'Type': 1.0,
-                'Flashcard': 1.0,
-            }
-            const difficulty = difficultyMultipliers[questionType] || 1.0;
-            
-            updateKnowledgeState(card, correct, iqs, difficulty);
-            
+            await updateKnowledgeState(card, correct, iqs);
+
             const sm2 = new SM2Algorithm();
             const quality = correct ? 4 : 1; 
             if(cardInDeck) cardInDeck.sm2Data = sm2.calculateNextReview(cardInDeck)(quality);
             
             if (currentMode === 'sequence') {
-                if (correct) {
-                    studyState.currentCardIndex++;
-                    if (studyState.sequencePhase === 'Forward Chaining' && studyState.currentCardIndex < studyState.sequenceCards.length) {
-                        studyState.roundCards.push(studyState.sequenceCards[studyState.currentCardIndex]);
-                    }
-                } else {
-                    if (studyState.sequencePhase === 'Forward Chaining') {
-                        studyState.currentCardIndex = 0;
-                        studyState.roundCards = [studyState.sequenceCards[0]]; 
-                        showToast("Sequence broken. Restarting chain.", "error");
+                const currentChunk = studyState.sequenceChunks[studyState.currentChunkIndex];
+                
+                if (studyState.sequencePhase === 'Forward Chaining') {
+                    if (correct) {
+                        studyState.currentCardIndex++;
+                        if (studyState.currentCardIndex >= currentChunk.length) {
+                            moveToNextSequencePhase(); 
+                        } else {
+                            showNextCard();
+                        }
                     } else {
                         showToast("Not quite. Let's try that one again.", "error");
+                        showNextCard(); 
+                    }
+                } else if (studyState.sequencePhase === 'Backward Chaining') {
+                    if (correct) {
+                        studyState.currentCardIndex--;
+                        if (studyState.currentCardIndex < 0) {
+                            moveToNextSequencePhase(); 
+                        } else {
+                            showNextCard();
+                        }
+                    } else {
+                        showToast("Not quite. Let's try that one again.", "error");
+                        showNextCard(); 
+                    }
+                } else if (studyState.sequencePhase === 'InterChunkReview') {
+                    studyState.sequencePhase = studyState.nextPhaseAfterReview;
+                    studyState.nextPhaseAfterReview = null;
+                    moveToNextSequencePhase(); 
+                } else if (studyState.sequencePhase === 'Weakest Link') {
+                    studyState.currentCardIndex++;
+                    if (studyState.currentCardIndex >= studyState.roundCards.length) {
+                        moveToNextSequencePhase(); 
+                    } else {
+                        showNextCard();
                     }
                 }
-                showNextCard(); 
-                return; 
-            }
-
-            if (currentMode === 'learn' && !correct) {
-                studyState.incorrectInThisRound.push({ ...card });
-            }
-
-            if (currentMode === 'review') {
-                if (correct) {
-                    const index = studyState.stillLearning.findIndex(c => c.id === card.id);
-                    if (index > -1) {
-                        studyState.stillLearning.splice(index, 1);
-                        studyState.correct.push(card);
-                    }
-                } else {
-                     if (!studyState.lastRoundIncorrect.some(c => c.id === card.id)) {
-                        studyState.lastRoundIncorrect.push(card);
+            } else {
+                if (currentMode === 'learn' && !correct) {
+                    studyState.incorrectInThisRound.push({ ...card });
+                }
+                
+                if (currentMode === 'review') {
+                    if (correct) {
+                        const index = studyState.stillLearning.findIndex(c => c.id === card.id);
+                        if (index > -1) {
+                            studyState.stillLearning.splice(index, 1);
+                            studyState.correct.push(card);
+                        }
+                    } else {
+                         if (!studyState.lastRoundIncorrect.some(c => c.id === card.id)) {
+                            studyState.lastRoundIncorrect.push(card);
+                        }
                     }
                 }
+
+                studyState.currentCardIndex++;
+                showNextCard();
+                updateFocusMeter();
             }
-
-            studyState.currentCardIndex++;
-            showNextCard();
-            updateFocusMeter();
-
+            
             await saveDataToDB('decks', decks[currentDeckId]);
         }
 
@@ -3698,25 +4278,40 @@
             document.getElementById('finalStats').innerHTML = `<div class="stat"><div class="stat-value">${studyState.currentRound}</div><div class="stat-label">Total Rounds</div></div><div class="stat"><div class="stat-value">${decks[currentDeckId].cards.length}</div><div class="stat-label">Cards Mastered</div></div>`;
         }
 
-            async function endSession() {
-                if (studyState.startTime) {
-                    const duration = Math.round((new Date() - studyState.startTime) / 1000);
-                    analyticsData.totalStudyTime += duration;
-                    analyticsData.sessions.unshift({
-                        date: new Date().toISOString(),
-                        deckName: decks[currentDeckId].name,
-                        mode: currentMode,
-                        duration: duration
-                    });
-                    if (analyticsData.sessions.length > 50) analyticsData.sessions.pop();
-                    await saveDataToDB('appData', { key: 'analytics', ...analyticsData });
-                }
-                await saveStudyProgress(); 
-                await updateUserBaseline();
-                studyState.isRetypingIncorrect = false;
-
-                backToDashboard();
+        async function endSession() {
+            if (currentDeckId && studyState.startTime) {
+                const deck = decks[currentDeckId];
+                const cardIdsInDeck = new Set(deck.cards.map(c => c.id));
+                const knowledgeStates = await getAllDataFromDB('userKnowledgeState');
+                // Calculate how many cards were mastered *before* this session's final updates.
+                const masteryCountBefore = knowledgeStates.filter(s => cardIdsInDeck.has(s.cardID) && s.masteryScore >= 0.95).length;
+                
+                // Now, call the coach with this crucial "before" data.
+                await runSmartCoachChecks('sessionEnd', {
+                    deckId: currentDeckId,
+                    masteryCountBefore: masteryCountBefore 
+                });
             }
+
+            if (studyState.startTime) {
+                const duration = Math.round((new Date() - studyState.startTime) / 1000);
+                analyticsData.totalStudyTime += duration;
+                analyticsData.sessions.unshift({
+                    date: new Date().toISOString(),
+                    deckName: decks[currentDeckId]?.name || 'Unknown Deck',
+                    mode: currentMode,
+                    duration: duration
+                });
+                if (analyticsData.sessions.length > 50) analyticsData.sessions.pop();
+                await saveDataToDB('appData', { key: 'analytics', ...analyticsData });
+            }
+            
+            await saveStudyProgress();
+            await updateUserBaseline();
+            
+            studyState.isRetypingIncorrect = false;
+            backToDashboard();
+        }
 
         function resetProgress() {
             showConfirmModal('Are you sure you want to reset your progress for this deck?', () => restartStudy());
@@ -3724,17 +4319,53 @@
         
         async function restartStudy() {
             const deck = decks[currentDeckId];
-            if (currentMode === 'learn') {
-                startLearnMode(currentDeckId);
-            } else if (currentMode === 'review') {
-                deck.reviewState = { stillLearning: [...deck.cards], correct: [], currentRound: 1, lastRoundIncorrect: [] };
-                await saveDataToDB('decks', deck);
-                startReviewMode(currentDeckId);
-            } else if (currentMode === 'spaced') {
-                const sm2 = new SM2Algorithm();
-                deck.cards.forEach(card => card.sm2Data = sm2.calculateNextReview({})(3));
-                await saveDataToDB('decks', deck);
-                configureStudy('spaced', currentDeckId);
+            if (!deck) return;
+
+            showToast("Resetting progress for this deck...", "info");
+
+            try {
+                const transaction = db.transaction(['userKnowledgeState'], 'readwrite');
+                const store = transaction.objectStore('userKnowledgeState');
+                
+                const resetPromises = deck.cards.map(card => {
+                    return new Promise((resolve, reject) => {
+                        // This is the default state for a brand new card.
+                        const defaultState = {
+                            userID: 'default_user',
+                            cardID: card.id,
+                            masteryScore: 0.5,
+                            stability: 1.0,
+                            lastReviewed: new Date().toISOString(),
+                            recallHistory: []
+                        };
+                        
+                        const request = store.put(defaultState);
+                        request.onsuccess = resolve;
+                        request.onerror = reject;
+                    });
+                });
+
+                await Promise.all(resetPromises);
+
+                if (currentMode === 'learn') {
+                } else if (currentMode === 'review') {
+                    deck.reviewState = { stillLearning: [...deck.cards], correct: [], currentRound: 1, lastRoundIncorrect: [] };
+                    await saveDataToDB('decks', deck);
+                } else if (currentMode === 'spaced') {
+                    const sm2 = new SM2Algorithm();
+                    deck.cards.forEach(card => card.sm2Data = sm2.calculateNextReview({})(3));
+                    await saveDataToDB('decks', deck);
+                }
+
+                showToast("Progress has been reset.", "success");
+                
+                if (currentMode === 'learn') startLearnMode(currentDeckId);
+                else if (currentMode === 'review') startReviewMode(currentDeckId);
+                else if (currentMode === 'spaced') startSpacedLearning(currentDeckId);
+
+            } catch (error) {
+                console.error("Failed to reset knowledge state:", error);
+                showToast("An error occurred while resetting progress.", "error");
             }
         }
         
@@ -3749,18 +4380,26 @@
 
         function setupKeyboardControls() {
             document.addEventListener('keydown', (e) => {
-                if (document.querySelector('.modal.show')) return; // Ignore shortcuts if a modal is open
+                if (document.querySelector('.modal.show')) return;
 
-                // --- Progress Screen Shortcut ---
                 if (activeView === 'studyMode' && !document.getElementById('progressView').classList.contains('hidden')) {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        document.getElementById('continueBtn').click(); // Clicks the button to start/continue
+                        document.getElementById('continueBtn').click();
                     }
                     return;
                 }
 
                 if (activeView !== 'studyMode' || document.getElementById('cardView').classList.contains('hidden')) return;
+
+                if (currentMode === 'sequence' && (e.key === 'Enter' || e.key === 'ArrowUp')) {
+                    const writeInput = document.getElementById('writeAnswerInput');
+                    if (!writeInput.classList.contains('hidden') && !writeInput.disabled) {
+                        e.preventDefault();
+                        checkSequenceAnswer();
+                        return; 
+                    }
+                }
 
                 const advancedButtons = document.getElementById('advancedAnswerButtons');
                 const simpleCorrectBtn = document.getElementById('correctBtn');
@@ -3769,28 +4408,23 @@
                 if (!advancedButtons.classList.contains('hidden')) {
                     e.preventDefault(); 
                     switch (e.key) {
-                        case '1': markSpaced(1); break; // Again
-                        case '2': markSpaced(2); break; // Hard
-                        case '3': markSpaced(3); break; // Good
-                        case '4': markSpaced(4); break; // Easy
+                        case '1': markSpaced(1); break;
+                        case '2': markSpaced(2); break;
+                        case '3': markSpaced(3); break;
+                        case '4': markSpaced(4); break;
                     }
-                    return; // Action was handled, so we exit
+                    return;
                 }
 
-                // PRIORITY 2: Simple Feedback Shortcuts are active
                 if (!simpleCorrectBtn.classList.contains('hidden')) {
                     e.preventDefault();
-                    if (e.key === 'ArrowLeft' || e.key === '1') {
-                        markIncorrect();
-                    } else if (e.key === 'ArrowRight' || e.key === '2') {
-                        markCorrect();
-                    }
-                    return; // Action was handled, so we exit
+                    if (e.key === 'ArrowLeft' || e.key === '1') markIncorrect();
+                    else if (e.key === 'ArrowRight' || e.key === '2') markCorrect();
+                    return;
                 }
 
-                // PRIORITY 3: "Show Answer" button is active
                 if (!showAnswerBtn.classList.contains('hidden')) {
-                    if (document.activeElement.tagName === 'TEXTAREA') return; // Don't interfere with typing
+                    if (document.activeElement.tagName === 'TEXTAREA') return;
                     if (e.key === ' ' || e.key === 'Enter') {
                         e.preventDefault();
                         showAnswer();
@@ -4357,18 +4991,23 @@
             updateSelection();
         }
 
+        // --- REPLACE THE ENTIRE FUNCTION WITH THIS ---
         function calculateIQS(logData, userBaseline = { latency: 1500, fluency: 10 }) {
-            const v_latency = 1 - (Math.min(logData.recallLatency / userBaseline.latency, 2) / 2);
-            const v_fluency = Math.min(logData.answerFluency / userBaseline.fluency, 1.5) / 1.5;
-            const v_corrections = 1 / (1 + logData.totalCorrections);  
-            const v_attempts = 1 / logData.attemptCount;
+            const recallLatency = (typeof logData.recallLatency === 'number') ? logData.recallLatency : userBaseline.latency;
+            const answerFluency = (typeof logData.answerFluency === 'number') ? logData.answerFluency : 0;
+            const totalCorrections = (typeof logData.totalCorrections === 'number') ? logData.totalCorrections : 0;
+            const attemptCount = (typeof logData.attemptCount === 'number' && logData.attemptCount > 0) ? logData.attemptCount : 1;
+            const v_latency = 1 - (Math.min(recallLatency / userBaseline.latency, 2) / 2);
+            const v_fluency = Math.min(answerFluency / userBaseline.fluency, 1.5) / 1.5;
+            const v_corrections = 1 / (1 + totalCorrections);
+            const v_attempts = 1 / attemptCount;
             const W_latency = 0.30;
             const W_fluency = 0.20;
             const W_corrections = 0.25;
             const W_attempts = 0.25;
             const iqs = (W_latency * v_latency) + (W_fluency * v_fluency) + (W_corrections * v_corrections) + (W_attempts * v_attempts);
 
-            return Math.max(0, Math.min(1, iqs)); // Clamp score between 0 and 1.
+            return isNaN(iqs) ? 0.5 : Math.max(0, Math.min(1, iqs));
         }
 
         async function fetchLatestDownloads() {
@@ -4480,57 +5119,76 @@
             };
         }
 
-        async function updateKnowledgeState(card, wasCorrect, iqs = 0.5, difficulty = 1.0) {
+        async function updateKnowledgeState(card, wasCorrect, iqs = 0.5, questionType = 'Flashcard') {
             if (!db) return;
 
-            const transaction = db.transaction(['userKnowledgeState'], 'readwrite');
-            const store = transaction.objectStore('userKnowledgeState');
-            const request = store.get(['default_user', card.id]);
-
-            request.onsuccess = () => {
-                let state = request.result;
-
-                if (!state) { 
-                    state = {
-                        userID: 'default_user', cardID: card.id, masteryScore: 0.5,
-                        stability: 1.0, lastReviewed: new Date().toISOString(), recallHistory: []
-                    };
-                }
-
-                const oldMastery = state.masteryScore;
-                const oldStability = state.stability;
-
-                let performanceWeight;
-                if (oldMastery < 0.6) {
-                    performanceWeight = 0.4;
-                } else if (oldMastery < 0.9) {
-                    performanceWeight = 0.25;
-                } else {
-                    performanceWeight = 0.1;
-                }
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['userKnowledgeState'], 'readwrite');
+                const store = transaction.objectStore('userKnowledgeState');
                 
-                const raw_performance = wasCorrect ? (0.5 + (iqs * 0.5)) : 0; 
-                const performance = raw_performance * difficulty;
-                const newMastery = (oldMastery * (1 - performanceWeight)) + (performance * performanceWeight);
+                transaction.oncomplete = () => {
+                    resolve(); 
+                };
+                transaction.onerror = (event) => {
+                    console.error("Database transaction error:", event.target.error);
+                    reject(event.target.error); 
+                };
 
-                let newStability;
-                if (wasCorrect) {
-                    newStability = oldStability + (0.1 * oldMastery);
-                } else {
-                    newStability = oldStability - (0.2 * oldMastery);
-                }
+                const request = store.get(['default_user', card.id]);
+
+                request.onsuccess = () => {
+                    let state = request.result;
+
+                    if (!state) { 
+                        state = {
+                            userID: 'default_user', cardID: card.id, masteryScore: 0.5,
+                            stability: 1.0, lastReviewed: new Date().toISOString(), recallHistory: []
+                        };
+                    }
+
+                    // Defensively get oldMastery and oldStability
+                    const oldMastery = (typeof state.masteryScore === 'number' && !isNaN(state.masteryScore)) ? state.masteryScore : 0.5;
+                    const oldStability = (typeof state.stability === 'number' && !isNaN(state.stability)) ? state.stability : 1.0;
+
+                    let performanceModifier;
+                    if (wasCorrect) {
+                        // High reward for harder questions
+                        const gainModifiers = { 'MultipleChoice': 1.0, 'Cloze': 1.25, 'Type': 1.5, 'Flashcard': 1.0 };
+                        performanceModifier = gainModifiers[questionType] || 1.0;
+                    } else {
+                        const lossModifiers = { 'MultipleChoice': 1.5, 'Cloze': 1.25, 'Type': 1.0, 'Flashcard': 1.0 };
+                        performanceModifier = lossModifiers[questionType] || 1.0;
+                    }
+
+                    let performanceWeight;
+                    if (oldMastery < 0.6) performanceWeight = 0.4;
+                    else if (oldMastery < 0.9) performanceWeight = 0.25;
+                    else performanceWeight = 0.1;
+
+                    // Apply our dynamic modifier to the learning rate
+                    performanceWeight *= performanceModifier;
+
+                    const raw_performance = wasCorrect ? (0.5 + (iqs * 0.5)) : 0; 
+                    const performance = raw_performance;
+                    const newMastery = (oldMastery * (1 - performanceWeight)) + (performance * performanceWeight);
+
+                    let newStability;
+                    if (wasCorrect) newStability = oldStability + (0.1 * oldMastery * performanceModifier); // Also boost stability gain
+                    else newStability = oldStability - (0.2 * oldMastery);
+                    
+                    state.masteryScore = Math.max(0.01, Math.min(0.99, newMastery)); 
+                    state.stability = Math.max(0.1, newStability); 
+                    state.lastReviewed = new Date().toISOString();
+                    state.recallHistory.push({ date: state.lastReviewed, wasCorrect });
+
+                    store.put(state);
+                };
                 
-                state.masteryScore = Math.max(0.01, Math.min(0.99, newMastery)); 
-                state.stability = Math.max(0.1, newStability); 
-                state.lastReviewed = new Date().toISOString();
-                state.recallHistory.push({ date: state.lastReviewed, wasCorrect });
-
-                store.put(state);
-            };
-            
-            request.onerror = (event) => {
-                console.error("Could not retrieve knowledge state for card:", event.target.error);
-            };
+                request.onerror = (event) => {
+                    console.error("Could not retrieve knowledge state for card:", event.target.error);
+                    reject(event.target.error);
+                };
+            });
         }
 
         function calculatePRecall(stability, lastReviewedISO) {
@@ -4629,23 +5287,38 @@
                 return;
             }
 
+            const chunkSize = 5;
+            studyState.sequenceChunks = [];
+            for (let i = 0; i < sequenceCards.length; i += chunkSize) {
+                studyState.sequenceChunks.push(sequenceCards.slice(i, i + chunkSize));
+            }
+
             studyState.settings = deck.settings;
             studyState.sequenceCards = sequenceCards;
-            studyState.sequencePhase = 'Forward Chaining';
-            
-            studyState.roundCards = [sequenceCards[0]]; 
-            
-            studyState.currentCardIndex = 0;
             studyState.currentRound = 1;
             studyState.startTime = new Date();
 
+            if (deck.sequenceState && deck.sequenceState.currentChunkIndex < studyState.sequenceChunks.length) {
+                studyState.currentChunkIndex = deck.sequenceState.currentChunkIndex;
+                studyState.sequencePhase = deck.sequenceState.sequencePhase;
+                showToast(`Resuming from Chunk ${studyState.currentChunkIndex + 1}...`, "info");
+            } else {
+                studyState.currentChunkIndex = 0;
+                studyState.sequencePhase = null; 
+            }
+            
             showView('studyMode');
             document.getElementById('studyTitle').textContent = 'Sequence Learner';
             document.getElementById('studySubtitle').textContent = deck.name;
-            document.getElementById('progressView').classList.add('hidden'); 
             
+            document.getElementById('progressView').classList.add('hidden'); 
             transitionSubView(null, document.getElementById('cardView'));
-            showNextCard();
+            
+            if (studyState.sequencePhase) {
+                showNextCard(); 
+            } else {
+                moveToNextSequencePhase(); 
+            }
         }
 
         function selectOptimalQuestionType(card) {
@@ -4680,25 +5353,18 @@
 
         async function generateAndDisplayMCQ(correctCard, allCardsInDeck) {
             const optionsContainer = document.getElementById('mcqOptions');
-            optionsContainer.innerHTML = '<div class="spinner" style="margin: 0 auto;"></div><p style="text-align: center; color: var(--secondary-text); font-size: 0.9rem; margin-top: 10px;">Generating smart options...</p>';
+            
+            const preGeneratedDistractors = studyState.preGeneratedDistractors.get(correctCard.id);
 
-            try {
-                const distractors = await window.electronAPI.generateDistractors({
-                    question: correctCard.question,
-                    answer: correctCard.answer
-                });
-
-                if (!distractors || distractors.length < 3) {
-                    throw new Error("API did not return enough distractors.");
-                }
-
-                const finalOptions = shuffleArray([correctCard.answer, ...distractors.slice(0, 3)]);
+            if (preGeneratedDistractors && preGeneratedDistractors.length >= 3) {
+                const finalOptions = shuffleArray([correctCard.answer, ...preGeneratedDistractors.slice(0, 3)]);
                 displayMCQButtons(finalOptions, correctCard);
-
-            } catch (error) {
-                console.error("Gemini API failed, falling back to random distractors.", error);
+            } else {
+                if (isOnline) {
+                    showToast("Couldn't generate smart options, using random.", "error");
+                }
+                console.warn("No pre-generated distractors found in cache (or offline), falling back to random.");
                 
-                showToast("Couldn't generate smart options, using random.", "error");
                 const options = new Set([correctCard.answer]);
                 const randomFill = shuffleArray(allCardsInDeck.filter(card => card.id !== correctCard.id));
                 for (const randomCard of randomFill) {
@@ -4823,6 +5489,534 @@
                 return this.instance;
             }
         }
+        async function preGenerateAdaptiveQuestions(roundCards, progressCallback) {
+            if (!isOnline) {
+                console.log("Offline mode: Skipping pre-generation.");
+                progressCallback(1, 1);
+                return;
+            }
+
+            studyState.preGeneratedDistractors.clear();
+
+            const cardsToGenerate = roundCards.filter(card => card.questionTypeToShow === 'MultipleChoice');
+            
+            if (cardsToGenerate.length === 0) {
+                progressCallback(1, 1);
+                return;
+            }
+
+            let completedJobs = 0;
+            const totalJobs = cardsToGenerate.length;
+            progressCallback(completedJobs, totalJobs);
+
+            const generationPromises = cardsToGenerate.map(card => {
+                return window.electronAPI.generateDistractors({
+                    question: card.question,
+                    answer: card.answer
+                }).then(distractors => {
+                    if (distractors && distractors.length >= 3) {
+                        studyState.preGeneratedDistractors.set(card.id, distractors);
+                    }
+                }).catch(error => {
+                    console.error(`Failed to pre-generate for card: ${card.question}`, error);
+                }).finally(() => {
+                    completedJobs++;
+                    progressCallback(completedJobs, totalJobs);
+                });
+            });
+
+            await Promise.all(generationPromises);
+        }
+
+        function updateOnlineStatusUI() {
+            const statusDot = document.getElementById('onlineStatusDot');
+            const statusText = document.getElementById('onlineStatusText');
+
+            if (isOnline) {
+                statusDot.style.backgroundColor = 'var(--success-color)';
+                statusText.textContent = 'Online';
+                statusText.style.color = 'var(--secondary-text)';
+            } else {
+                statusDot.style.backgroundColor = 'var(--danger-color)';
+                statusText.textContent = 'Offline';
+                statusText.style.color = 'var(--danger-color)';
+            }
+        }
+
+        function showAiGenerator() {
+            showView('aiGenerator');
+            documentsForAi = []; 
+            renderDocumentList();
+            renderAiGeneratedCards([]); 
+            document.getElementById('flashcard-summary').classList.add('hidden');
+        }
+
+        function switchAiTab(tabName) {
+            document.getElementById('aiContentInput').classList.toggle('hidden', tabName !== 'input');
+            document.getElementById('aiContentCustomise').classList.toggle('hidden', tabName !== 'customise');
+            document.getElementById('aiTabInput').classList.toggle('active', tabName === 'input');
+            document.getElementById('aiTabCustomise').classList.toggle('active', tabName === 'customise');
+        }
+
+        function renderDocumentList() {
+            const listContainer = document.getElementById('document-list');
+
+            if (documentsForAi.length === 0) {
+                listContainer.innerHTML = `
+                    <div id="empty-doc-list" class="list-empty-state">
+                        <div class="list-empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg></div>
+                        <p>Your uploaded documents will appear here.</p>
+                    </div>`;
+            } else {
+                listContainer.innerHTML = documentsForAi.map((doc, index) => `
+                    <div class="document-item" data-doc-id="${doc.id}">
+                        <div class="document-item-header">
+                            <span class="document-name">
+                                <span class="document-status-icon">${doc.status === 'processing' ? '<div class="spinner"></div>' : (doc.status === 'done' ? '✓' : '📄')}</span>
+                                ${doc.name}
+                            </span>
+                            <button class="remove-doc-btn" onclick="removeDocument(${index})">&times;</button>
+                        </div>
+                        <div class="document-info">${doc.type}</div>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('doc-list-count').textContent = `Documents (${documentsForAi.length})`;
+            document.getElementById('process-btn').disabled = documentsForAi.length === 0;
+        }
+
+        async function handleAiFiles(files) {
+            for (const file of files) {
+                const doc = {
+                    id: Date.now() + Math.random(),
+                    name: file.name,
+                    type: file.type || 'text/plain',
+                    content: null,
+                    status: 'processing'
+                };
+                documentsForAi.push(doc);
+                renderDocumentList();
+
+                try {
+                    doc.content = await readFileContent(file);
+                    doc.status = 'done';
+                } catch (error) {
+                    console.error("Error reading file:", error);
+                    doc.status = 'error';
+                    showToast(`Failed to read ${file.name}`, 'error');
+                }
+                renderDocumentList(); 
+            }
+        }
+
+        function readFileContent(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        if (file.type === 'application/pdf') {
+                            const pdf = await pdfjsLib.getDocument({ data: e.target.result }).promise;
+                            let text = '';
+                            for (let i = 1; i <= pdf.numPages; i++) {
+                                const page = await pdf.getPage(i);
+                                const content = await page.getTextContent();
+                                text += content.items.map(item => item.str).join(' ') + '\n';
+                            }
+                            resolve(text);
+                        } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                            const result = await mammoth.extractRawText({ arrayBuffer: e.target.result });
+                            resolve(result.value);
+                        } else if (file.type.startsWith('text/')) {
+                            const decoder = new TextDecoder('utf-8');
+                            resolve(decoder.decode(e.target.result));
+                        } else if (file.type.startsWith('image/')) {
+                            resolve(e.target.result); // This is already correct (reads as Data URL)
+                        } else {
+                            reject(new Error(`Unsupported file type: ${file.type}`));
+                        }
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+
+                if (file.type.startsWith('image/')) {
+                    reader.readAsDataURL(file);
+                } else {
+                    reader.readAsArrayBuffer(file);
+                }
+            });
+        }
+
+        function addTextAsDocument() {
+            const text = document.getElementById('ai-text-input').value.trim();
+            if (!text) return;
+            const doc = {
+                id: Date.now() + Math.random(),
+                name: `Pasted Text - ${new Date().toLocaleTimeString()}`,
+                type: 'text/plain',
+                content: text,
+                status: 'done'
+            };
+            documentsForAi.push(doc);
+            renderDocumentList();
+            document.getElementById('ai-text-input').value = '';
+        }
+
+        function removeDocument(index) {
+            documentsForAi.splice(index, 1);
+            renderDocumentList();
+        }
+        async function processAllDocuments() {
+            if (documentsForAi.length === 0) {
+                showToast("Please add at least one document.", "error");
+                return;
+            }
+
+            if (!isOnline) {
+                showToast("You are offline. AI generation requires internet.", "error");
+                return;
+            }
+
+            // --- Show Loading State ---
+            const processBtn = document.getElementById('process-btn');
+            const btnText = document.getElementById('process-text');
+            const processIcon = document.getElementById('process-icon');
+            const loaderIcon = document.getElementById('loader-icon');
+            processBtn.disabled = true;
+            btnText.textContent = 'Processing...';
+            processIcon.classList.add('hidden');
+            loaderIcon.classList.remove('hidden');
+            document.getElementById('flashcard-summary').classList.add('hidden');
+
+            try {
+                // Add a 30-second timeout for the API call
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request timed out")), 30000));
+                const apiPromise = window.electronAPI.generateDeck({ documents: documentsForAi });
+                const generatedCards = await Promise.race([timeoutPromise, apiPromise]);
+
+                if (!generatedCards || generatedCards.length === 0) {
+                    throw new Error("AI did not return any cards.");
+                }
+
+                renderAiGeneratedCards(generatedCards);
+                document.getElementById('flashcard-summary').classList.remove('hidden');
+            } catch (error) {
+                console.error("Deck generation failed:", error);
+                showToast("Sorry, the AI failed to generate cards. Please try again or check your connection.", "error");
+            } finally {
+                // --- Reset UI State ---
+                processBtn.disabled = false;
+                btnText.textContent = 'Process All';
+                processIcon.classList.remove('hidden');
+                loaderIcon.classList.add('hidden');
+            }
+        }
+
+        function renderAiGeneratedCards(cards) {
+            const listContainer = document.getElementById('flashcard-list');
+            listContainer.dataset.cards = JSON.stringify(cards); // Store the data
+
+            if (cards.length === 0) {
+                listContainer.innerHTML = `
+                    <div id="empty-flashcard-list" class="list-empty-state">
+                        <div class="list-empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" /></svg></div>
+                        <p>Generated cards will appear here after processing.</p>
+                    </div>`;
+            } else {
+                // If there are cards, build the list HTML.
+                listContainer.innerHTML = cards.map((card, index) => `
+                    <div class="generated-card" data-index="${index}">
+                        <div class="question">${card.question}</div>
+                        <div class="answer">${card.answer}</div>
+                        <div class="generated-card-actions">
+                            <button class="generated-card-action-btn delete" title="Delete Card" onclick="deleteGeneratedCard(${index})">&times;</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('flashcard-count').textContent = `Generated Flashcards (${cards.length})`;
+        }
+
+        function deleteGeneratedCard(index) {
+            const listContainer = document.getElementById('flashcard-list');
+            const cards = JSON.parse(listContainer.dataset.cards);
+            cards.splice(index, 1);
+            renderAiGeneratedCards(cards);
+        }
+
+        async function saveAiGeneratedDeck() {
+            const listContainer = document.getElementById('flashcard-list');
+            const cards = JSON.parse(listContainer.dataset.cards);
+            const deckName = documentsForAi.length > 0 ? documentsForAi[0].name.split('.')[0] : "New AI Deck";
+
+            if (cards.length === 0) {
+                showToast("There are no cards to save.", "error");
+                return;
+            }
+
+            const finalCards = cards.map(c => ({
+                id: Date.now() + Math.random(),
+                question: c.question,
+                answer: c.answer,
+                isNew: true
+            }));
+
+            await createNewDeck(deckName, 'Other', finalCards);
+            showToast(`Deck "${deckName}" created successfully!`, 'success');
+            backToDashboard();
+        }
+
+        function setupDragDropView(chunk) {
+            const list = document.getElementById('dragDropList');
+            const shuffledChunk = shuffleArray([...chunk]);
+            list.innerHTML = shuffledChunk.map(card => 
+                `<div class="deck-card-item drag-item" data-id="${card.id}">${card.answer}</div>`
+            ).join('');
+
+            if (sortableInstance) {
+                sortableInstance.destroy();
+            }
+            sortableInstance = new Sortable(list, {
+                animation: 150,
+                ghostClass: 'drag-ghost',
+                chosenClass: 'drag-chosen',
+            });
+        }
+
+        function checkDragDropOrder() {
+            const currentChunk = studyState.sequenceChunks[studyState.currentChunkIndex];
+            const listItems = document.querySelectorAll('#dragDropList .deck-card-item');
+            let isCorrect = true;
+
+            listItems.forEach((item, index) => {
+                const cardId = item.dataset.id;
+                if (cardId !== currentChunk[index].id) {
+                    isCorrect = false;
+                    item.style.border = '2px solid var(--danger-color)';
+                } else {
+                    item.style.border = '2px solid var(--success-color)';
+                }
+            });
+
+            if (isCorrect) {
+                showToast("Perfect Order!", "success");
+                setTimeout(moveToNextSequencePhase, 1500);
+            } else {
+                showToast("Not quite right. Try again.", "error");
+            }
+        }
+
+        function checkSequenceAnswer() {
+            const userInput = document.getElementById('writeAnswerInput');
+            const currentChunk = studyState.sequenceChunks[studyState.currentChunkIndex];
+            const card = (studyState.sequencePhase === 'Weakest Link') 
+                ? studyState.roundCards[studyState.currentCardIndex]
+                : currentChunk[studyState.currentCardIndex];
+
+            if (!card || userInput.value.trim() === '') return;
+
+            const userAnswer = userInput.value.trim();
+            const correctAnswer = card.answer.trim();
+            
+            const isCorrect = (userAnswer.toLowerCase() === correctAnswer.toLowerCase());
+
+            logInteraction({ cardID: card.id, wasCorrect: isCorrect, userAnswer: userAnswer, questionType: 'Sequence' });
+            
+            userInput.classList.toggle('correct', isCorrect);
+            userInput.classList.toggle('incorrect', !isCorrect);
+            userInput.disabled = true;
+            showAnswer();
+            const delay = isCorrect ? 800 : 2000;
+            setTimeout(() => {
+                moveCard(card, isCorrect);
+            }, 800); 
+        }
+
+        function dontKnowSequenceAnswer() {
+            const currentChunk = studyState.sequenceChunks[studyState.currentChunkIndex];
+            const card = (studyState.sequencePhase === 'Weakest Link') 
+                ? studyState.roundCards[studyState.currentCardIndex]
+                : currentChunk[studyState.currentCardIndex];
+
+            if (!card) return;
+
+            logInteraction({ cardID: card.id, wasCorrect: false, userAnswer: "[Don't Know]", questionType: 'Sequence' });
+            showAnswer();
+            document.querySelector('#cardView .flashcard').classList.add('is-flipped');
+            document.getElementById('cardAnswerContent').classList.remove('hidden');
+            document.getElementById('writeAnswerInput').disabled = true;
+
+            showToast("The correct answer is shown above.", "error");
+
+            setTimeout(() => {
+                moveCard(card, false);
+            }, 2000);
+        }
+
+
+        async function showInsightsView() {
+            // This is our main controller function for the view.
+            const setupInsights = async () => {
+                const deckSelect = document.getElementById('insightsDeckSelect');
+                deckSelect.innerHTML = '<option value="">-- Select a Deck --</option>';
+                Object.values(decks).forEach(deck => {
+                    deckSelect.innerHTML += `<option value="${deck.id}">${deck.name}</option>`;
+                });
+
+                const allKnowledgeStates = await getAllDataFromDB('userKnowledgeState');
+                const knowledgeMap = new Map(allKnowledgeStates.map(item => [item.cardID, item]));
+                
+                // Hide content until a deck is selected.
+                document.getElementById('insightsContent').classList.add('hidden');
+                document.getElementById('insightsPlaceholder').classList.remove('hidden');
+                
+                // We define this as a separate function to keep the code clean.
+                const handleDeckSelection = (deckId) => {
+                    if (!deckId) {
+                        document.getElementById('insightsContent').classList.add('hidden');
+                        document.getElementById('insightsPlaceholder').classList.remove('hidden');
+                        return;
+                    }
+                    renderMasteryBreakdownChart(deckId, knowledgeMap);
+                    // This function will now add its own event listeners.
+                    updateCardDetailListForInsights(deckId, knowledgeMap);
+                    renderForgettingCurveChart(null, deckId); 
+                    document.getElementById('insightsContent').classList.remove('hidden');
+                    document.getElementById('insightsPlaceholder').classList.add('hidden');
+                };
+
+                // Remove previous listeners to prevent memory leaks if this view is reloaded.
+                const newDeckSelect = deckSelect.cloneNode(true);
+                deckSelect.parentNode.replaceChild(newDeckSelect, deckSelect);
+
+                // Add the event listener WITHOUT '{ once: true }'.
+                newDeckSelect.addEventListener('change', () => {
+                    handleDeckSelection(newDeckSelect.value);
+                });
+            };
+
+            showView('insightsView', false, setupInsights);
+        }
+
+        function updateCardDetailListForInsights(deckId, knowledgeMap) {
+            const list = document.getElementById('insightsCardList');
+            const deck = decks[deckId];
+            list.innerHTML = ''; // Clear the list first.
+
+            deck.cards.forEach(card => {
+                const state = knowledgeMap.get(card.id);
+                const masteryPercent = Math.round((state?.masteryScore || 0.5) * 100);
+                const stability = state?.stability?.toFixed(1) || 'N/A';
+
+                const cardItem = document.createElement('div');
+                cardItem.className = 'deck-card-item';
+                
+                cardItem.innerHTML = `
+                    <div style="flex-grow: 1;">${card.question}</div>
+                    <div style="color:var(--secondary-text); font-weight:500;">Mastery: ${masteryPercent}% | Stability: ${stability}d</div>
+                `;
+
+                // If the card has learning data, add the listener.
+                if (state) {
+                    cardItem.style.cursor = 'pointer';
+                    cardItem.addEventListener('click', () => {
+                        // All variables (state, deckId) are correctly in scope here.
+                        renderForgettingCurveChart(state, deckId);
+                    });
+                }
+                list.appendChild(cardItem);
+            });
+        }
+
+        function renderForgettingCurveChart(cardState, deckId) {
+            const canvasId = 'forgettingCurveChart';
+            const cardDetailP = document.getElementById('cardDetailForCurve');
+            if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+            const ctx = document.getElementById(canvasId).getContext('2d');
+
+            if (!cardState || !cardState.stability || !deckId) {
+                cardDetailP.textContent = 'Select a card from the list to see its predicted curve.';
+                chartInstances[canvasId] = new Chart(ctx, { data: { labels: [], datasets: [] }, options: { plugins: { legend: { display: false } } } }); 
+                return;
+            }
+            
+            const card = decks[deckId]?.cards.find(c => c.id === cardState.cardID);
+            if (!card) {
+                cardDetailP.textContent = 'Error: Could not find card details.';
+                return;
+            }
+            cardDetailP.textContent = `Predicted curve for: "${card.question}"`;
+
+            const stability = cardState.stability;
+            const labels = [];
+            const data = [];
+            for (let t = 0; t <= stability * 3; t += Math.max(1, Math.round(stability / 10))) {
+                labels.push(t);
+                const pRecall = Math.pow(2, -t / stability);
+                data.push(pRecall * 100);
+            }
+
+            chartInstances[canvasId] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Probability of Recall (%)',
+                        data: data,
+                        borderColor: 'var(--primary-color)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { min: 0, max: 100, title: { display: true, text: 'Recall Probability (%)' } },
+                        x: { title: { display: true, text: 'Days Since Last Review' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function renderMasteryBreakdownChart(deckId, knowledgeMap) {
+            const canvasId = 'masteryBreakdownChart';
+            if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+            
+            const deck = decks[deckId];
+            let counts = { novice: 0, learning: 0, mastered: 0 };
+            deck.cards.forEach(card => {
+                const mastery = knowledgeMap.get(card.id)?.masteryScore || 0.5;
+                if (mastery < 0.6) counts.novice++;
+                else if (mastery < 0.95) counts.learning++;
+                else counts.mastered++;
+            });
+
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            chartInstances[canvasId] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Novice (0-60%)', 'Learning (60-95%)', 'Mastered (95%+)'],
+                    datasets: [{
+                        data: [counts.novice, counts.learning, counts.mastered],
+                        backgroundColor: ['#fc8181', '#f6ad55', '#68d391'],
+                        borderColor: 'var(--card-bg)',
+                        borderWidth: 4
+                    }]
+                },
+                options: { responsive: true, cutout: '70%', plugins: { legend: { display: false } } }
+            });
+
+            // Update custom legend
+            const legend = document.getElementById('masteryLegend');
+            legend.innerHTML = `
+                <div style="display:flex; align-items:center; margin-bottom: 5px;"><div style="width:12px; height:12px; background-color:#fc8181; border-radius:50%; margin-right:8px;"></div>Novice: ${counts.novice} cards</div>
+                <div style="display:flex; align-items:center; margin-bottom: 5px;"><div style="width:12px; height:12px; background-color:#f6ad55; border-radius:50%; margin-right:8px;"></div>Learning: ${counts.learning} cards</div>
+                <div style="display:flex; align-items:center;"><div style="width:12px; height:12px; background-color:#68d391; border-radius:50%; margin-right:8px;"></div>Mastered: ${counts.mastered} cards</div>
+            `;
+        }
+
     </script>
 </body>
 </html>
